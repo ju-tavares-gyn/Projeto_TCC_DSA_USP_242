@@ -1,0 +1,7 @@
+# Pastas de IDEs
+.spyproject/
+__pycache__/
+
+# Arquivos
+dados_antes_redesim.csv
+dados_pos_redesim.csv
