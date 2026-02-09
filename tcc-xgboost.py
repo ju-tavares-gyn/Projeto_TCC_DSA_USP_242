@@ -17,12 +17,12 @@ github: https://github.com/ju-tavares-gyn/Projeto_TCC_DSA_USP_242.git
 
 #!pip install scipy # Lib serve para padronização de variáveis métricas Z SCORE
 #!pip install python-dateutil
+#!pip install scikit-optimize
 
 #%% Importando os pacotes
 
 import pandas as pd
 import numpy as np
-import math
 
 from xgboost import XGBClassifier
 # import xgboost as xgb
@@ -32,6 +32,7 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.preprocessing import TargetEncoder
 from sklearn.metrics import roc_auc_score 
 from sklearn.metrics import roc_curve
+from sklearn.metrics import accuracy_score
 
 import category_encoders as ce
 
@@ -39,7 +40,7 @@ from scipy.stats import zscore
 import matplotlib.pyplot as plt
 import seaborn as sns
 from datetime import datetime
-from funcoes_ajuda import descritiva, encode_strategy, avaliaPredicao
+from funcoes_ajuda import avaliaPredicao #, descritiva, encode_strategy,
 
 #from scipy import stats # Lib serve para padronização de variáveis métricas Z SCORE
 
@@ -206,12 +207,10 @@ dados_final.drop(columns=['DATA_SOLICITACAO_REGISTRO', 'DATA_HOMOLOGACAO_REGISTR
 dados_final.drop(columns=['DATA_INICIO_ATIVIDADE', 'DATA_ENCERRAMENTO_ATIVIDADE'], inplace=True)
 # dados_final.drop(columns=['SITUACAO_CADASTRAL'], inplace=True)
 
-
 #%% Realizar a transformação de variáveis categóricas
 
 # variáveis categóricas nominais
 colunas_categoricas = ['CADASTRO_VIA_REDESIM', 'SITUACAO_CADASTRAL', 'ENQUADRAMENTO_EMPRESA', 'TIPO_CONTRIBUINTE', 'MUNICIPIO', 'NATUREZA_JURIDICA', 'ATIVIDADE_ECONOMICA_DIVISAO']
-# colunas_categoricas = ['CADASTRO_VIA_REDESIM', 'ENQUADRAMENTO_EMPRESA', 'TIPO_CONTRIBUINTE', 'MUNICIPIO', 'NATUREZA_JURIDICA', 'ATIVIDADE_ECONOMICA_DIVISAO']
 
 # Converter as variáveis categóricas para tipo category
 for col in colunas_categoricas:
@@ -223,17 +222,19 @@ for col in colunas_categoricas:
 
 dados_final.info()
 
-
 #%% Separar as variáveis features e target 
 
+# semente que serve para reproduzir o modelo no futuro e obter os mesmos resultados(2360873  = famoso número de telefone do Bozo) 
+randomState=2360873
+
 # Obter 10% (0.1) das linhas aleatoriamente
-df_fracao = dados_final.sample(frac=0.1)
+df_fracao = dados_final.sample(frac=1)
 
 X_features = df_fracao.drop(['ENCERROU_ATIVIDADE'], axis=1) 
 y_target = df_fracao['ENCERROU_ATIVIDADE']
 
-# dividir a base em 80% para treino e 20% para teste
-X_treino, X_teste, y_treino, y_teste = train_test_split(X_features, y_target, test_size=0.2, random_state=2360873) # a semente 2360873 (famoso número do Bozo) serve para reproduzir o modelo no futuro e obter os mesmos resultados
+# Dividir a base em 80% para treino e 20% para teste / Separa 20% para o teste final (que o modelo nunca verá no treino nem na validação)
+X_treino, X_teste, y_treino, y_teste = train_test_split(X_features, y_target, test_size=0.2, random_state=randomState)
 
 # sempre importante conferir a cada passo
 print(X_treino.shape)
@@ -242,11 +243,9 @@ print(X_teste.shape)
 print(y_teste.shape)
 
 # Aplicar estratégia mista de transformação de variáveis categóricas
-# X_treino = encode_strategy(X_treino, colunas_categoricas, y_treino, True) #coluna_target, True)
-# X_teste = encode_strategy(X_teste, colunas_categoricas, y_teste, False) # coluna_target, False)
 
-from sklearn.compose import make_column_transformer
-from sklearn.preprocessing import OneHotEncoder
+# from sklearn.compose import make_column_transformer
+# from sklearn.preprocessing import OneHotEncoder
 
 X_treino_encoded = X_treino.copy()
 X_teste_encoded = X_teste.copy()
@@ -255,7 +254,7 @@ colunas_OnHot = ['CADASTRO_VIA_REDESIM', 'SITUACAO_CADASTRAL', 'ENQUADRAMENTO_EM
 colunas_TargetEncoder = ['MUNICIPIO', 'NATUREZA_JURIDICA', 'ATIVIDADE_ECONOMICA_DIVISAO']
  
 # One-Hot Encoding para poucas categorias
-X_treino_encoded = pd.get_dummies(X_treino_encoded, columns=colunas_OnHot, drop_first=True) # dtype=int
+X_treino_encoded = pd.get_dummies(X_treino, columns=colunas_OnHot, drop_first=True) # dtype=int
 X_teste_encoded = pd.get_dummies(X_teste, columns=colunas_OnHot, drop_first=True) 
 
 # Implementação com Suavização (Smoothing) para evitar overfitting
@@ -268,20 +267,14 @@ X_teste_encoded[colunas_TargetEncoder] = encoder.transform(X_teste[colunas_Targe
     #     freq = X_treino[col].value_counts(normalize=True)
     #     X_treino_encoded[f'{col}_freq'] = X_treino[col].map(freq)
     #     X_treino_encoded.drop(col, axis=1, inplace=True)
-        
-    #     freq = X_teste[col].value_counts(normalize=True)
-    #     X_teste_encoded[f'{col}_freq'] = X_teste[col].map(freq)
-    #     X_teste_encoded.drop(col, axis=1, inplace=True)
-    #     print('Frequency Encoding  - coluna = ' + col )
-
 
 #%% Definir os parâmetros do GridSearchCV
 param_grid = {
     # n_estimators = Número de árvores (geralmente entre 100-1000).
-    'n_estimators': [50, 100],   
+    'n_estimators': [50, 100, 200],   
     
     # max_depth = Profundidade da árvore (valores baixos reduzem overfitting - comum: 3-10). Com poucas variáveis, não precisa ser muito profundo.
-    'max_depth': [2, 3],   
+    'max_depth': [2, 3, 4, 5],   
     
     # learning_rate = Taxa de aprendizado: menor é melhor, mas exige mais estimadores
     'learning_rate': [0.01, 0.1], # [0.01, 0.1, 0.2]
@@ -303,33 +296,107 @@ param_grid = {
 import time
 from datetime import datetime
 # iniciar o cronômetro do tempo de treinamento do modelo
-tempo_ini = time.time()
 data_inicio = datetime.now()
 
 # instanciar a implementação do XGBoosting Classifier
-modelo = XGBClassifier(objective='binary:logistic', random_state=2360873)
+modelo = XGBClassifier(objective='binary:logistic', random_state=randomState)
 
-cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=2360873)
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=randomState)
 
-grid_search = GridSearchCV(estimator=modelo, param_grid=param_grid, scoring='roc_auc', cv=cv, verbose=1, n_jobs=-1) #error_score='raise'
+grid_search = GridSearchCV(estimator=modelo, param_grid=param_grid, scoring='roc_auc', cv=cv, verbose=0, n_jobs=-1) #error_score='raise'
 
 # treinar o modelo XGBoost com o grid search
 # grid_search.fit(X_treino, y_treino)
 grid_search.fit(X_treino_encoded, y_treino)
 
 # finalizar o cronômetro do tempo de treinamento do modelo
-tempo_fim = time.time()
 data_fim = datetime.now()
 
 #%% calculando o tempo de treinamento do modelo
-print(f"Tempo de execução do modelo XGBoost: {tempo_fim - tempo_ini} segundos")
-print(f"Tempo de execução do modelo XGBoost: {data_fim - data_inicio}")
+tempoTreino = data_fim - data_inicio
+dias = tempoTreino.days
+horas, resto = divmod(tempoTreino.seconds, 3600)
+minutos, segundos = divmod(resto, 60)
+
+print(f"Tempo de execução do modelo XGBoost: {dias * 24 + horas:02}h :{minutos:02}m :{segundos:02}s")
 
 #%% Verificando os melhores parâmetros do modelo
 
 print("Melhores parâmetros do grid_search:")
 print(grid_search.best_params_)
 
-#%% Avaliar o modelo XGBoosting
+#%% Avaliar o modelo XGBoosting com GridSearch
 avaliaPredicao(grid_search.best_estimator_, X_treino_encoded, y_treino, X_teste_encoded, y_teste)
 
+#%% Treinar o modelo XGBoost com o Otimização Baysiana
+from skopt import BayesSearchCV
+from skopt.space import Real, Integer
+
+# Divisão dos dados (Treino + Validação para o Early Stopping)
+# Dos 80% restantes, separa uma fatia para VALIDAÇÃO (ex: 20% do que sobrou)
+X_train, X_val, y_train, y_val = train_test_split(X_treino_encoded, y_treino, test_size=0.2, random_state=randomState)
+
+# iniciar o cronômetro do tempo de treinamento do modelo
+data_inicio = datetime.now()
+
+# 1. Definição do Espaço de Busca
+search_spaces = {
+    'n_estimators': Integer(100, 1000),
+    'max_depth': Integer(3, 10),
+    'learning_rate': Real(0.01, 0.3, prior='log-uniform'),
+    'gamma': Real(1e-6, 1.0, prior='log-uniform'),
+    'subsample': Real(0.5, 1.0),
+    'colsample_bytree': Real(0.5, 1.0)
+}
+
+# 2. Instância do Modelo
+xgb_model = XGBClassifier(objective='binary:logistic', eval_metric='logloss', early_stopping_rounds=20) # Definido na instância para versões recentes
+
+
+# 3. Configuração da Busca Bayesiana
+opt = BayesSearchCV(estimator=xgb_model,
+                    search_spaces=search_spaces,
+                    n_iter=32,           # Número de combinações a testar
+                    cv=5,                # Cross-validation
+                    n_jobs=-1,           # Paralelização
+                    random_state=randomState
+)
+
+# 4. Execução com Early Stopping
+# Passamos o eval_set dentro do fit_params para o Scikit-Optimize
+opt.fit(X_train, y_train, eval_set=[(X_val, y_val)], verbose=False)
+
+print(f"Melhores parâmetros: {opt.best_params_}")
+print(f"Melhor score: {opt.best_score_}")
+
+# finalizar o cronômetro do tempo de treinamento do modelo
+data_fim = datetime.now()
+
+tempoTreino = data_fim - data_inicio
+dias = tempoTreino.days
+horas, resto = divmod(tempoTreino.seconds, 3600)
+minutos, segundos = divmod(resto, 60)
+
+print(f"Tempo de execução do modelo XGBoost com Otimização Bayesiana: {dias * 24 + horas:02}h :{minutos:02}m :{segundos:02}s")
+
+print(f"Melhores parâmetros: {opt.best_params_}")
+print(f"Melhor score: {opt.best_score_}")
+
+#%% 
+def treinarModelo(parametros, X_treino, y_treino, X_teste, y_teste):
+    
+    # learning_rate = 
+    learning_rate = parametros[0] # Taxa de aprendizado: menor é melhor, mas exige mais estimadores  [0.01, 0.1, 0.2]
+    num_leaves = parametros[1] # número máximo de folhas de cada árvore no último nó    
+    min_child_samples =  parametros[2] # quantidade de observações em cada nó    
+    subsample = parametros[3] # Amostragem de observações/linhas: Pode ajudar a reduzir overfitting (0.5 a 1.0).
+    colsample_bytree = parametros[4] # Amostragem de colunas: Em um modelo com 10 variáveis, 0.7 significa usar 7 variáveis por árvore
+    
+    #'n_estimators': [50, 100] # n_estimators = Número de árvores (geralmente entre 100-1000).
+        
+    
+    modelo = XGBClassifier()    
+    modelo.fit(X_treino, y_treino)
+    p_teste = modelo.predict_proba(X_teste)[:,1]
+    return -roc_auc_score(y_teste, p_teste)
+    
