@@ -8,6 +8,7 @@ Created on Sat Nov 16 21:03:50 2024
 #%%  funções de ajuda
 
 import pandas as pd
+import numpy as np
 import category_encoders as ce
 
 from sklearn.metrics import accuracy_score, classification_report, \
@@ -246,11 +247,49 @@ def coverterDataStringDateTime(data_str):
     dataConvertida = datetime.strptime(data_str, formatoData)    
     return dataConvertida.date()
 
-# Gera os indicadores de desempenho operacional, perfil e econômico
+# Gerar os indicadores de desempenho
 def gerarIndicadores(df):
+
+    df['DataHomologacaoAno'] = df['DATA_HOMOLOGACAO_REGISTRO'].dt.year
+    
+    # calcular o Tempo Médio de Abertura de Empresa/Contribuintes, antes e depois da RedeSim.
+    df['tempo_abertura'] = df['DATA_HOMOLOGACAO_REGISTRO'] - df['DATA_SOLICITACAO_REGISTRO']
+    
+    media_abertura = df.groupby('CADASTRO_VIA_REDESIM')['tempo_abertura'].mean().reset_index(name='tempo')
+    tempo1 = media_abertura.loc[media_abertura['CADASTRO_VIA_REDESIM'] == 'N', 'tempo']
+    tempo2 = media_abertura.loc[media_abertura['CADASTRO_VIA_REDESIM'] == 'S', 'tempo']
+    
+    tempo1Formatado = (
+        tempo1.dt.components['days'].astype(str) + 'd ' +
+        tempo1.dt.components['hours'].astype(str) + 'h ' +
+        tempo1.dt.components['minutes'].astype(str) + 'm'
+    )
+    
+    tempo2Formatado = (
+        tempo2.dt.components['days'].astype(str) + 'd ' +
+        tempo2.dt.components['hours'].astype(str) + 'h ' +
+        tempo2.dt.components['minutes'].astype(str) + 'm'
+    )
+    
+    print(f'Tempo médio de abertura de empresa/contribuinte antes da RedeSim = {tempo1Formatado}')
+    print(f'Tempo médio de abertura de empresa/contribuinte após a RedeSim   = {tempo2Formatado}')
+    
+    
+    ## Calcular o Tempo Médio de Sobrevivência da Empresa/Contribuintes, antes e depois da RedeSim.
+    df['tempo_sobrevivencia_meses'] = np.where(df['DATA_ENCERRAMENTO_ATIVIDADE'].notna(), 
+                                              (df['DATA_ENCERRAMENTO_ATIVIDADE'] - df['DATA_INICIO_ATIVIDADE']).dt.days / 30, # Cálculo
+                                               np.nan)           # Valor se for nulo
+    
+    media_sobrevivencia = df.groupby('CADASTRO_VIA_REDESIM')['tempo_sobrevivencia_meses'].mean().reset_index(name='tempo')
+    tempo1 = int(media_sobrevivencia.loc[media_abertura['CADASTRO_VIA_REDESIM'] == 'N', 'tempo'])
+    tempo2 = int(media_sobrevivencia.loc[media_abertura['CADASTRO_VIA_REDESIM'] == 'S', 'tempo'])
+    print(f"Tempo médio de sobrevivência até o encerramento da atividade empresarial (antes RedeSim) = {tempo1} meses")
+    print(f"Tempo médio de sobrevivência até o encerramento da atividade empresarial (após RedeSim)  = {tempo2}  meses")
+    
+    
     # Calcular a quantidade de abertura de empresa: antes e após a integração com a RedeSim
     # 1.Agrupar por ano e indicador de cadastro via RedeSim
-    dfAgrupamento = df.groupby(['DATA_HOMOLOGACAO_ANO', 'CADASTRO_VIA_REDESIM']).size() #.unstack().fillna(0)
+    dfAgrupamento = df.groupby(['DataHomologacaoAno', 'CADASTRO_VIA_REDESIM']).size() #.unstack().fillna(0)
     
     # 2. Transformar os valores (categotrias) da variável 'CADASTRO_VIA_REDESIM' em colunas
     # Matplotlib precisa que as categorias estejam em colunas separadas para criar barras agrupadas ou múltiplas linhas.
@@ -279,23 +318,34 @@ def gerarIndicadores(df):
     plt.show()
     
     # Calcular a Distribuição de Empresas por Município e Ano
-    # 1. Agrupar os dados: Contar empresas por ano e município
+    # agrupar os dados: Contar empresas por ano e município
     # Usamos reset_index() para transformar o agrupamento em colunas utilizáveis
-    dfAgrupamento = df.groupby(['DATA_HOMOLOGACAO_ANO', 'MUNICIPIO']).size().reset_index(name='quantidade')
+    dfAgrupamento = df.groupby(['DataHomologacaoAno', 'MUNICIPIO']).size().reset_index(name='quantidade')
     
-    # 2. Calcular o crescimento acumulado (opcional, mas recomendado)
-    dfAgrupamento = dfAgrupamento.sort_values(by=['MUNICIPIO', 'DATA_HOMOLOGACAO_ANO'])
-    dfAgrupamento['crescimento_acumulado'] = dfAgrupamento.groupby('MUNICIPIO')['quantidade'].cumsum()
     
-    # 4. Visualização com Seaborn
-    plt.figure(figsize=(20, 10))
-    sns.lineplot(data=dfAgrupamento['MUNICIPIO'].value_counts().nlargest(5), x='DATA_HOMOLOGACAO_ANO', y='crescimento_acumulado', hue='MUNICIPIO', marker='o')
+    # Ordenar por ano (crescente) e quantidade (decrescente)
+    df_ordenado = dfAgrupamento.sort_values(by=['DataHomologacaoAno', 'quantidade'], ascending=[True, False])
     
-    plt.title('Crescimento de Empresas por Município ao Longo dos Anos')
-    plt.xlabel('Ano')
-    plt.ylabel('Total de Empresas (Acumulado)')
-    plt.grid(True)
-    plt.legend(title='Município')
+    # Agrupar por ano e obter os Top 5 municipios que abriram mais empresas em cada ano
+    top_municipio_qtde = 5
+    df_top5_por_ano = df_ordenado.groupby('DataHomologacaoAno').head(top_municipio_qtde)
+    
+    # Visualização com Seaborn
+    plt.figure(figsize=(15, 7))
+    ax = sns.lineplot(data=df_top5_por_ano, x='DataHomologacaoAno', y='quantidade', hue='MUNICIPIO', marker='o', linewidth=1.0)  # Esquema de cores elegante
+    plt.title('Quantitativo de Abertura de Empresas por Município e Ano', fontsize=12, fontweight= 'bold')
+    plt.xlabel('', fontsize=12)
+    plt.ylabel('', fontsize=12)
+    plt.grid(True, linestyle='--')
+    # Captura os handles (linhas) e labels (nomes) gerados
+    # ax = sns.barplot(data=df_top5_por_ano, x='DataHomologacaoAno', y='quantidade', hue='MUNICIPIO')
+    # handles, labels = ax.get_legend_handles_labels()
+    # plt.legend(handles[0:top_municipio_qtde], labels[0:top_municipio_qtde], title='Município', bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.legend(title='Município', bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.tight_layout()
     plt.show()
+    
+    # remover do dataframe colunas temporarias utilizadas para calcular os indicadores
+    df.drop(columns=['DataHomologacaoAno', 'tempo_abertura', 'tempo_sobrevivencia_meses'], inplace=True)
     
    

@@ -24,23 +24,23 @@ github: https://github.com/ju-tavares-gyn/Projeto_TCC_DSA_USP_242.git
 import pandas as pd
 import numpy as np
 
-from xgboost import XGBClassifier
-# import xgboost as xgb
+# from xgboost import XGBClassifier
+import xgboost as xgb
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import StratifiedKFold
-from sklearn.preprocessing import TargetEncoder
-from sklearn.metrics import roc_auc_score 
-from sklearn.metrics import roc_curve
-from sklearn.metrics import accuracy_score
+# from sklearn.preprocessing import TargetEncoder
+# from sklearn.metrics import roc_auc_score 
+# from sklearn.metrics import roc_curve
+# from sklearn.metrics import accuracy_score
 
 import category_encoders as ce
 
-from scipy.stats import zscore
+# from scipy.stats import zscore
 import matplotlib.pyplot as plt
-import seaborn as sns
+# import seaborn as sns
 from datetime import datetime
-from funcoes_ajuda import avaliaPredicao #, descritiva, encode_strategy,
+from funcoes_ajuda import avaliaPredicao, gerarIndicadores
 
 #from scipy import stats # Lib serve para padronização de variáveis métricas Z SCORE
 
@@ -94,106 +94,8 @@ dados_final['TempoAtividadeEmpresarial'] = np.where(dados_final['DATA_ENCERRAMEN
 ## nova verificação de dados faltantes
 print(dados_final.isnull().sum())
 
-#%% Calcular indicadores de desempenho da integração com a RedeSim Agrupar por indicador CADASTRO_VIA_REDESIM (S=SIM ou N=Não)
-
-dados_final['DataHomologacaoAno'] = dados_final['DATA_HOMOLOGACAO_REGISTRO'].dt.year
-
-# calcular o Tempo Médio de Abertura de Empresa/Contribuintes, antes e depois da RedeSim.
-dados_final['tempo_abertura'] = dados_final['DATA_HOMOLOGACAO_REGISTRO'] - dados_final['DATA_SOLICITACAO_REGISTRO']
-
-media_abertura = dados_final.groupby('CADASTRO_VIA_REDESIM')['tempo_abertura'].mean().reset_index(name='tempo')
-tempo1 = media_abertura.loc[media_abertura['CADASTRO_VIA_REDESIM'] == 'N', 'tempo']
-tempo2 = media_abertura.loc[media_abertura['CADASTRO_VIA_REDESIM'] == 'S', 'tempo']
-
-tempo1Formatado = (
-    tempo1.dt.components['days'].astype(str) + 'd ' +
-    tempo1.dt.components['hours'].astype(str) + 'h ' +
-    tempo1.dt.components['minutes'].astype(str) + 'm'
-)
-
-tempo2Formatado = (
-    tempo2.dt.components['days'].astype(str) + 'd ' +
-    tempo2.dt.components['hours'].astype(str) + 'h ' +
-    tempo2.dt.components['minutes'].astype(str) + 'm'
-)
-
-print(f'Tempo médio de abertura de empresa/contribuinte antes da RedeSim = {tempo1Formatado}')
-print(f'Tempo médio de abertura de empresa/contribuinte após a RedeSim   = {tempo2Formatado}')
-
-
-## Calcular o Tempo Médio de Sobrevivência da Empresa/Contribuintes, antes e depois da RedeSim.
-dados_final['tempo_sobrevivencia_meses'] = np.where(dados_final['DATA_ENCERRAMENTO_ATIVIDADE'].notna(), 
-                                          (dados_final['DATA_ENCERRAMENTO_ATIVIDADE'] - dados_final['DATA_INICIO_ATIVIDADE']).dt.days / 30, # Cálculo
-                                           np.nan)           # Valor se for nulo
-
-media_sobrevivencia = dados_final.groupby('CADASTRO_VIA_REDESIM')['tempo_sobrevivencia_meses'].mean().reset_index(name='tempo')
-tempo1 = int(media_sobrevivencia.loc[media_abertura['CADASTRO_VIA_REDESIM'] == 'N', 'tempo'])
-tempo2 = int(media_sobrevivencia.loc[media_abertura['CADASTRO_VIA_REDESIM'] == 'S', 'tempo'])
-print(f"Tempo médio de sobrevivência até o encerramento da atividade empresarial (antes RedeSim) = {tempo1} meses")
-print(f"Tempo médio de sobrevivência até o encerramento da atividade empresarial (após RedeSim)  = {tempo2}  meses")
-
-
-# Calcular a quantidade de abertura de empresa: antes e após a integração com a RedeSim
-# 1.Agrupar por ano e indicador de cadastro via RedeSim
-dfAgrupamento = dados_final.groupby(['DataHomologacaoAno', 'CADASTRO_VIA_REDESIM']).size() #.unstack().fillna(0)
-
-# 2. Transformar os valores (categotrias) da variável 'CADASTRO_VIA_REDESIM' em colunas
-# Matplotlib precisa que as categorias estejam em colunas separadas para criar barras agrupadas ou múltiplas linhas.
-dfAgrupamento = dfAgrupamento.unstack().fillna(0)
-print(dfAgrupamento)
-
-# 3. Gerar o gráfico de barras (atribuindo a um objeto 'ax')
-ax = dfAgrupamento.plot(kind='bar', figsize=(10, 5), width=0.8)
-
-# 4. Adicionar os valores em cima de cada barra
-# O Matplotlib armazena as barras em 'ax.containers'
-for container in ax.containers:
-    ax.bar_label(container, padding=2)
-
-# 4. Ajustes finais
-plt.title('Quantitativo de abertura de empresas') # N = Antes RedeSim, S = Após RedeSim
-plt.xlabel('Ano')
-plt.ylabel('Quantidade')
-plt.legend(title='Categorias', bbox_to_anchor=(1, 1))
-
-# Definir manualmente os nomes na legenda
-ax.legend(['Antes RedeSim', 'Após RedeSim'], title='Categorias')
-
-plt.xticks(rotation=0)
-plt.tight_layout()
-plt.show()
-
-# Calcular a Distribuição de Empresas por Município e Ano
-# agrupar os dados: Contar empresas por ano e município
-# Usamos reset_index() para transformar o agrupamento em colunas utilizáveis
-dfAgrupamento = dados_final.groupby(['DataHomologacaoAno', 'MUNICIPIO']).size().reset_index(name='quantidade')
-
-
-# Ordenar por ano (crescente) e quantidade (decrescente)
-df_ordenado = dfAgrupamento.sort_values(by=['DataHomologacaoAno', 'quantidade'], ascending=[True, False])
-
-# Agrupar por ano e obter os Top 5 municipios que abriram mais empresas em cada ano
-top_municipio_qtde = 5
-df_top5_por_ano = df_ordenado.groupby('DataHomologacaoAno').head(top_municipio_qtde)
-
-# Visualização com Seaborn
-plt.figure(figsize=(15, 7))
-ax = sns.lineplot(data=df_top5_por_ano, x='DataHomologacaoAno', y='quantidade', hue='MUNICIPIO', marker='o', linewidth=1.0)  # Esquema de cores elegante
-plt.title('Quantitativo de Abertura de Empresas por Município e Ano', fontsize=12, fontweight= 'bold')
-plt.xlabel('', fontsize=12)
-plt.ylabel('', fontsize=12)
-plt.grid(True, linestyle='--')
-# Captura os handles (linhas) e labels (nomes) gerados
-# ax = sns.barplot(data=df_top5_por_ano, x='DataHomologacaoAno', y='quantidade', hue='MUNICIPIO')
-# handles, labels = ax.get_legend_handles_labels()
-# plt.legend(handles[0:top_municipio_qtde], labels[0:top_municipio_qtde], title='Município', bbox_to_anchor=(1.05, 1), loc='upper left')
-plt.legend(title='Município', bbox_to_anchor=(1.05, 1), loc='upper left')
-plt.tight_layout()
-plt.show()
-
-# remover do dataframe colunas temporarias utilizadas para calcular os indicadores
-dados_final.drop(columns=['DataHomologacaoAno', 'tempo_abertura', 'tempo_sobrevivencia_meses'], inplace=True)
-
+#%% Gerar os indicadores de desempenho da integração com a RedeSim
+gerarIndicadores(dados_final)
 
 #%% Definir a variável Targert para o encerramento de atividade empresarial
 coluna_target = 'ENCERROU_ATIVIDADE'
@@ -217,10 +119,7 @@ colunas_categoricas = ['CADASTRO_VIA_REDESIM', 'SITUACAO_CADASTRAL', 'ENQUADRAME
 for col in colunas_categoricas:
     dados_final[col] = dados_final[col].astype('category')
     
-# tratar variáveis tipo data
-# dados_final['DATA_INICIO_ATIVIDADE'] = dados_final['DATA_INICIO_ATIVIDADE'].dt.strftime('%Y%m%d').astype(int)
-# dados_final['DATA_ENCERRAMENTO_ATIVIDADE'] = dados_final['DATA_ENCERRAMENTO_ATIVIDADE'].dt.strftime('%Y%m%d').astype(float)
-
+# verificar tipo das variáveis
 dados_final.info()
 
 #%% Separar as variáveis features e target 
@@ -229,7 +128,7 @@ dados_final.info()
 randomState=2360873
 
 # Obter 10% (0.1) das linhas aleatoriamente
-df_fracao = dados_final.sample(frac=1)
+df_fracao = dados_final.sample(frac=0.8)
 
 X_features = df_fracao.drop(['ENCERROU_ATIVIDADE'], axis=1) 
 y_target = df_fracao['ENCERROU_ATIVIDADE']
@@ -300,11 +199,11 @@ from datetime import datetime
 data_inicio = datetime.now()
 
 # instanciar a implementação do XGBoosting Classifier
-modelo = XGBClassifier(objective='binary:logistic', random_state=randomState)
+modelo_xgb = xgb.XGBClassifier(objective='binary:logistic', random_state=randomState)
 
 cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=randomState)
 
-grid_search = GridSearchCV(estimator=modelo, param_grid=param_grid, scoring='roc_auc', cv=cv, verbose=0, n_jobs=-1) #error_score='raise'
+grid_search = GridSearchCV(estimator=modelo_xgb, param_grid=param_grid, scoring='roc_auc', cv=cv, verbose=0, n_jobs=-1) #error_score='raise'
 
 # treinar o modelo XGBoost com o grid search
 # grid_search.fit(X_treino, y_treino)
@@ -322,12 +221,15 @@ minutos, segundos = divmod(resto, 60)
 print(f"Tempo de execução do modelo XGBoost: {dias * 24 + horas:02}h :{minutos:02}m :{segundos:02}s")
 
 #%% Verificando os melhores parâmetros do modelo
-
 print("Melhores parâmetros do grid_search:")
 print(grid_search.best_params_)
 
 #%% Avaliar o modelo XGBoosting com GridSearch
 avaliaPredicao(grid_search.best_estimator_, X_treino_encoded, y_treino, X_teste_encoded, y_teste)
+
+#%% Imprimir a importância das variáveis após o treinamento do modelo
+xgb.plot_importance(modelo_xgb)
+plt.show()
 
 #%% Treinar o modelo XGBoost com o Otimização Baysiana
 from skopt import BayesSearchCV
@@ -352,7 +254,7 @@ search_spaces = {
 
 
 # 2. Instância do Modelo
-xgb_model = XGBClassifier(objective='binary:logistic', eval_metric='logloss', early_stopping_rounds=20) # Definido na instância para versões recentes
+xgb_model = xgb.XGBClassifier(objective='binary:logistic', eval_metric='logloss', early_stopping_rounds=20) # Definido na instância para versões recentes
 
 
 # 3. Configuração da Busca Bayesiana
@@ -401,7 +303,7 @@ def treinarModelo(parametros, X_treino, y_treino, X_teste, y_teste):
     #'n_estimators': [50, 100] # n_estimators = Número de árvores (geralmente entre 100-1000).
         
     
-    modelo = XGBClassifier()    
+    modelo = xgb.XGBClassifier()    
     modelo.fit(X_treino, y_treino)
     p_teste = modelo.predict_proba(X_teste)[:,1]
     return -roc_auc_score(y_teste, p_teste)
