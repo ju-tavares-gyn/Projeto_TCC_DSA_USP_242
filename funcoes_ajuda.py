@@ -80,9 +80,9 @@ def avaliaPredicao(modelo, X_train, y_train, X_test, y_test):
     fpr_train, tpr_train, _ = roc_curve(y_train, p_train)
     fpr_test, tpr_test, _ = roc_curve(y_test, p_test)
     
-    plt.figure(figsize=(8, 4))
-    plt.plot(fpr_train, tpr_train, color='red', label=f'Treino AUC = {auc_train:.2f}')
-    plt.plot(fpr_test, tpr_test, color='blue', label=f'Teste AUC = {auc_test:.2f}')
+    plt.figure(figsize=(10, 5))
+    plt.plot(fpr_train, tpr_train, color='red', label=f'Treino AUC = {auc_train:.2f}', linewidth=2)
+    plt.plot(fpr_test, tpr_test, color='blue', label=f'Teste AUC = {auc_test:.2f}', linewidth=1.5)
     plt.plot([0, 1], [0, 1], color='black', linestyle='--')
     plt.xlabel('Falso Positivo')
     plt.ylabel('Verdadeiro Positivo')

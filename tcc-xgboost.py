@@ -50,8 +50,8 @@ variaveis = ['CADASTRO_VIA_REDESIM', 'DATA_SOLICITACAO_REGISTRO', 'DATA_HOMOLOGA
              'MUNICIPIO', 'NATUREZA_JURIDICA', 'ENQUADRAMENTO_EMPRESA', 'TIPO_CONTRIBUINTE',
              'ATIVIDADE_ECONOMICA_DIVISAO', 'QTDE_SOCIOS', 'CAPITAL_SOCIAL']
 
-nomeArquivoAntes = 'dados_antes_redesim.csv'
-nomeArquivoApos = 'dados_pos_redesim.csv'
+nomeArquivoAntes = 'dados_antes_redesim.csv' # descompactar o arquivo dados_antes_redesim.7z antes de executar o script
+nomeArquivoApos = 'dados_pos_redesim.csv'    # descompactar o arquivo dados_pos_redesim.7z   antes de executar o script
 
 # Mesclar os dados em uma única base
 dados_final = pd.concat([pd.read_csv(nomeArquivoAntes, sep='¬', encoding = 'latin-1', usecols=variaveis), 
@@ -69,7 +69,6 @@ formatoData = "%d/%m/%Y"
 
 dados_final['DATA_SOLICITACAO_REGISTRO'] = pd.to_datetime(dados_final['DATA_SOLICITACAO_REGISTRO'], format=formatoDataTime)
 dados_final['DATA_HOMOLOGACAO_REGISTRO'] = pd.to_datetime(dados_final['DATA_HOMOLOGACAO_REGISTRO'], format=formatoDataTime)
-dados_final['DataHomologacaoAno'] = dados_final['DATA_HOMOLOGACAO_REGISTRO'].dt.year
 
 # tratar a data de inicio de atividade que estiver nula será preenchida com a data de homologação do registo de abertura (79 observações).
 dados_final['DATA_INICIO_ATIVIDADE'] = dados_final['DATA_INICIO_ATIVIDADE'].fillna(dados_final['DATA_HOMOLOGACAO_REGISTRO'].dt.date)
@@ -96,6 +95,8 @@ dados_final['TempoAtividadeEmpresarial'] = np.where(dados_final['DATA_ENCERRAMEN
 print(dados_final.isnull().sum())
 
 #%% Calcular indicadores de desempenho da integração com a RedeSim Agrupar por indicador CADASTRO_VIA_REDESIM (S=SIM ou N=Não)
+
+dados_final['DataHomologacaoAno'] = dados_final['DATA_HOMOLOGACAO_REGISTRO'].dt.year
 
 # calcular o Tempo Médio de Abertura de Empresa/Contribuintes, antes e depois da RedeSim.
 dados_final['tempo_abertura'] = dados_final['DATA_HOMOLOGACAO_REGISTRO'] - dados_final['DATA_SOLICITACAO_REGISTRO']
@@ -191,7 +192,7 @@ plt.tight_layout()
 plt.show()
 
 # remover do dataframe colunas temporarias utilizadas para calcular os indicadores
-dados_final.drop(columns=['DataHomologacaoAno','tempo_abertura', 'tempo_sobrevivencia_meses'], inplace=True)
+dados_final.drop(columns=['DataHomologacaoAno', 'tempo_abertura', 'tempo_sobrevivencia_meses'], inplace=True)
 
 
 #%% Definir a variável Targert para o encerramento de atividade empresarial
@@ -274,10 +275,10 @@ param_grid = {
     'n_estimators': [50, 100, 200],   
     
     # max_depth = Profundidade da árvore (valores baixos reduzem overfitting - comum: 3-10). Com poucas variáveis, não precisa ser muito profundo.
-    'max_depth': [2, 3, 4, 5],   
+    'max_depth': [3, 4, 5, 6, 7, 8, 9, 10],   
     
     # learning_rate = Taxa de aprendizado: menor é melhor, mas exige mais estimadores
-    'learning_rate': [0.01, 0.1], # [0.01, 0.1, 0.2]
+    'learning_rate': [0.01, 0.1, 0.2, 0.3], # [0.01, 0.1, 0.2]
     
     # colsample_bytree = Amostragem de colunas: Em umn modelo com 10 variáveis, 0.7 significa usar 7 variáveis por árvore,
     'colsample_bytree': [0.6, 0.8],    
@@ -287,9 +288,9 @@ param_grid = {
     
     # gamma é um parâmetro de regularização que controla a complexidade da árvore ao exigir uma redução mínima da perda para criar novas divisões.
     #       Configurar de 0 a 2 para testar desde nenhuma restrição até uma restrição moderada.
-    'gamma': [0, 1],    
+    'gamma': [0, 1] #,    
     # min_child_weight = parâmetro que controla a divisão. Valores mais altos evitam divisões em nós com poucas amostras.
-    'min_child_weight': [1]
+    #'min_child_weight': [1]
 }
 
 #%% Treinar o modelo com o grid search
@@ -341,13 +342,14 @@ data_inicio = datetime.now()
 
 # 1. Definição do Espaço de Busca
 search_spaces = {
-    'n_estimators': Integer(100, 1000),
-    'max_depth': Integer(3, 10),
-    'learning_rate': Real(0.01, 0.3, prior='log-uniform'),
-    'gamma': Real(1e-6, 1.0, prior='log-uniform'),
-    'subsample': Real(0.5, 1.0),
-    'colsample_bytree': Real(0.5, 1.0)
+    'n_estimators': Integer(50, 500), # 100, 1000
+    'max_depth': Integer(3, 10), # 3, 10
+    'learning_rate': Real(0.01, 0.3, prior='log-uniform'), # 0.01, 0.3
+    'colsample_bytree': Real(0.5, 1.0), # 0.5, 1.0
+    'subsample': Real(0.5, 1.0), # 0.5, 1.0
+    'gamma': Real(1e-6, 1.0, prior='log-uniform') # 1e-6, 1.0
 }
+
 
 # 2. Instância do Modelo
 xgb_model = XGBClassifier(objective='binary:logistic', eval_metric='logloss', early_stopping_rounds=20) # Definido na instância para versões recentes
@@ -381,6 +383,10 @@ print(f"Tempo de execução do modelo XGBoost com Otimização Bayesiana: {dias 
 
 print(f"Melhores parâmetros: {opt.best_params_}")
 print(f"Melhor score: {opt.best_score_}")
+print(f"Melhor estimador: {opt.best_estimator_}")
+
+#%% Avaliar o modelo XGBoosting com Otimização Bayesiana
+avaliaPredicao(opt.best_estimator_, X_treino_encoded, y_treino, X_teste_encoded, y_teste)
 
 #%% 
 def treinarModelo(parametros, X_treino, y_treino, X_teste, y_teste):
