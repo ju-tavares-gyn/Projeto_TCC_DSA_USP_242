@@ -218,17 +218,20 @@ dias = tempoTreino.days
 horas, resto = divmod(tempoTreino.seconds, 3600)
 minutos, segundos = divmod(resto, 60)
 
-print(f"Tempo de execução do modelo XGBoost: {dias * 24 + horas:02}h :{minutos:02}m :{segundos:02}s")
+print(f"Tempo de execução do modelo XGBoost com GridSearch: {dias * 24 + horas:02}h :{minutos:02}m :{segundos:02}s")
 
 #%% Verificando os melhores parâmetros do modelo
-print("Melhores parâmetros do grid_search:")
+print("Melhores parâmetros com GridSearch:")
 print(grid_search.best_params_)
 
 #%% Avaliar o modelo XGBoosting com GridSearch
 avaliaPredicao(grid_search.best_estimator_, X_treino_encoded, y_treino, X_teste_encoded, y_teste)
 
 #%% Imprimir a importância das variáveis após o treinamento do modelo
-xgb.plot_importance(modelo_xgb)
+
+# model.feature_importances_ retorna um array com as importâncias
+feat_importances = pd.Series(grid_search.best_estimator_.feature_importances_, index=X_treino_encoded.columns)
+feat_importances.nlargest(10).plot(kind='barh')
 plt.show()
 
 #%% Treinar o modelo XGBoost com o Otimização Baysiana
@@ -270,8 +273,6 @@ opt = BayesSearchCV(estimator=xgb_model,
 # Passamos o eval_set dentro do fit_params para o Scikit-Optimize
 opt.fit(X_train, y_train, eval_set=[(X_val, y_val)], verbose=False)
 
-print(f"Melhores parâmetros: {opt.best_params_}")
-print(f"Melhor score: {opt.best_score_}")
 
 # finalizar o cronômetro do tempo de treinamento do modelo
 data_fim = datetime.now()
@@ -281,14 +282,20 @@ dias = tempoTreino.days
 horas, resto = divmod(tempoTreino.seconds, 3600)
 minutos, segundos = divmod(resto, 60)
 
+print(f"Melhores parâmetros com otimização Bayesiana: {opt.best_params_}")
+print(f"Melhor score: {opt.best_score_}")
 print(f"Tempo de execução do modelo XGBoost com Otimização Bayesiana: {dias * 24 + horas:02}h :{minutos:02}m :{segundos:02}s")
 
-print(f"Melhores parâmetros: {opt.best_params_}")
-print(f"Melhor score: {opt.best_score_}")
-print(f"Melhor estimador: {opt.best_estimator_}")
-
 #%% Avaliar o modelo XGBoosting com Otimização Bayesiana
-avaliaPredicao(opt.best_estimator_, X_treino_encoded, y_treino, X_teste_encoded, y_teste)
+avaliaPredicao(opt.best_estimator_, X_train, y_train, X_teste_encoded, y_teste)
+
+#%% Imprimir a importância das variáveis após o treinamento do modelo XGBoost com Otimização Bayesiana
+
+# model.feature_importances_ retorna um array com as importâncias
+feat_importances = pd.Series(opt.best_estimator_.feature_importances_, index=X_train.columns)
+feat_importances.nlargest(15).plot(kind='barh')
+# feat_importances.plot(kind='barh')
+plt.show()
 
 #%% 
 def treinarModelo(parametros, X_treino, y_treino, X_teste, y_teste):
