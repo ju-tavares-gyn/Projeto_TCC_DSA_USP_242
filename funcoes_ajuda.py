@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 """
 Created on Sat Nov 16 21:03:50 2024
-
 @author: João Mello
+
+Modificado em 12/02/2026
+@author: Juliano Tavares
 """
 
 #%%  funções de ajuda
@@ -66,11 +68,11 @@ def encode_strategy(df, categorical_cols, dftarget, is_treino):
 
 # Avaliar o modelo XGBoosting
 def avaliaPredicao(modelo, X_train, y_train, X_test, y_test):
-    # p_train = modelo.predict_proba(X_train)[:, 1]
-    p_train = modelo.predict(X_train)
+    p_train = modelo.predict_proba(X_train)[:, 1]
+    # p_train = modelo.predict(X_train)
         
-    # p_test = modelo.predict_proba(X_test)[:, 1]
-    p_test = modelo.predict(X_test)
+    p_test = modelo.predict_proba(X_test)[:, 1]
+    # p_test = modelo.predict(X_test)
 
     auc_train = roc_auc_score(y_train, p_train)
     auc_test = roc_auc_score(y_test, p_test)
@@ -83,12 +85,57 @@ def avaliaPredicao(modelo, X_train, y_train, X_test, y_test):
     
     plt.figure(figsize=(10, 5))
     plt.plot(fpr_train, tpr_train, color='red', label=f'Treino AUC = {auc_train:.2f}', linewidth=2)
-    plt.plot(fpr_test, tpr_test, color='blue', label=f'Teste AUC = {auc_test:.2f}', linewidth=1.5)
+    plt.plot(fpr_test, tpr_test, color='blue', label=f'Teste AUC = {auc_test:.2f}', linewidth=1)
     plt.plot([0, 1], [0, 1], color='black', linestyle='--')
     plt.xlabel('Falso Positivo')
     plt.ylabel('Verdadeiro Positivo')
     plt.title('Curva ROC')
     plt.legend()
+    plt.show()
+
+def avalia_classificacao(modelo, X, y, rótulos_y=['Em Atividade', 'Encerrou Atividade'], base = 'treino'):
+    
+    # Calcular as classificações preditas
+    pred = modelo.predict(X)
+    
+    # Calcular a probabilidade de evento
+    y_prob = modelo.predict_proba(X)[:, -1]
+    
+    # Calculando acurácia e matriz de confusão
+    cm = confusion_matrix(y, pred)
+    ac = accuracy_score(y, pred)
+    bac = balanced_accuracy_score(y, pred)
+
+    print(f'\nBase de {base}:')
+    print(f'A acurácia é: {ac:.1%}')
+    print(f'A acurácia balanceada é: {bac:.1%}')
+    
+    # Calculando AUC
+    auc_score = roc_auc_score(y, y_prob)
+    print(f"AUC-ROC: {auc_score:.2%}")
+    # print(f"GINI: {(2*auc_score-1):.2%}")
+    
+    # Visualização gráfica
+    sns.heatmap(cm, 
+                annot=True, fmt='d', cmap='viridis', 
+                xticklabels=rótulos_y, 
+                yticklabels=rótulos_y)
+    
+    # Relatório de classificação do Scikit
+    print('\n', classification_report(y, pred))
+    
+    # Gerar a Curva ROC
+    fpr, tpr, thresholds = roc_curve(y, y_prob)
+    
+    # Plotar a Curva ROC
+    plt.figure(figsize=(8, 6))
+    plt.plot(fpr, tpr, color='blue', label=f'Curva ROC (AUC = {auc_score:.2f})')
+    plt.plot([0, 1], [0, 1], color='red', linestyle='--')  # Linha de referência (modelo aleatório)
+    plt.xlabel("Taxa de Falsos Positivos (FPR)")
+    plt.ylabel("Taxa de Verdadeiros Positivos (TPR)")
+    plt.title(f"Curva ROC - base de {base}")
+    plt.legend(loc="lower right")
+    plt.grid()
     plt.show()
 
 def descritiva(df_, var, vresp='ENCERROU_ATIVIDADE', max_classes=5):
@@ -120,53 +167,6 @@ def descritiva(df_, var, vresp='ENCERROU_ATIVIDADE', max_classes=5):
     
     # Exibir o gráfico
     plt.show()
-    
-    
-def avalia_clf(clf, y, X, rótulos_y=['Não Sobreviveu', 'Sobreviveu'], base = 'treino'):
-    
-    # Calcular as classificações preditas
-    pred = clf.predict(X)
-    
-    # Calcular a probabilidade de evento
-    y_prob = clf.predict_proba(X)[:, -1]
-    
-    # Calculando acurácia e matriz de confusão
-    cm = confusion_matrix(y, pred)
-    ac = accuracy_score(y, pred)
-    bac = balanced_accuracy_score(y, pred)
-
-    print(f'\nBase de {base}:')
-    print(f'A acurácia da árvore é: {ac:.1%}')
-    print(f'A acurácia balanceada da árvore é: {bac:.1%}')
-    
-    # Calculando AUC
-    auc_score = roc_auc_score(y, y_prob)
-    print(f"AUC-ROC: {auc_score:.2%}")
-    print(f"GINI: {(2*auc_score-1):.2%}")
-    
-    # Visualização gráfica
-    sns.heatmap(cm, 
-                annot=True, fmt='d', cmap='viridis', 
-                xticklabels=rótulos_y, 
-                yticklabels=rótulos_y)
-    
-    # Relatório de classificação do Scikit
-    print('\n', classification_report(y, pred))
-    
-    # Gerar a Curva ROC
-    fpr, tpr, thresholds = roc_curve(y, y_prob)
-    
-    # Plotar a Curva ROC
-    plt.figure(figsize=(8, 6))
-    plt.plot(fpr, tpr, color='blue', label=f'Curva ROC (AUC = {auc_score:.2f})')
-    plt.plot([0, 1], [0, 1], color='red', linestyle='--')  # Linha de referência (modelo aleatório)
-    plt.xlabel("Taxa de Falsos Positivos (FPR)")
-    plt.ylabel("Taxa de Verdadeiros Positivos (TPR)")
-    plt.title(f"Curva ROC - base de {base}")
-    plt.legend(loc="lower right")
-    plt.grid()
-    plt.show()
-
 
 def relatorio_missing(df):
     print(f'Número de linhas: {df.shape[0]} | Número de colunas: {df.shape[1]}')

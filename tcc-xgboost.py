@@ -40,7 +40,7 @@ import category_encoders as ce
 import matplotlib.pyplot as plt
 # import seaborn as sns
 from datetime import datetime
-from funcoes_ajuda import avaliaPredicao, gerarIndicadores
+from funcoes_ajuda import gerarIndicadores, avaliaPredicao, avalia_classificacao
 
 #from scipy import stats # Lib serve para padronização de variáveis métricas Z SCORE
 
@@ -128,7 +128,7 @@ dados_final.info()
 randomState=2360873
 
 # Obter 10% (0.1) das linhas aleatoriamente
-df_fracao = dados_final.sample(frac=0.8)
+df_fracao = dados_final.sample(frac=1)
 
 X_features = df_fracao.drop(['ENCERROU_ATIVIDADE'], axis=1) 
 y_target = df_fracao['ENCERROU_ATIVIDADE']
@@ -171,25 +171,25 @@ X_teste_encoded[colunas_TargetEncoder] = encoder.transform(X_teste[colunas_Targe
 #%% Definir os parâmetros do GridSearchCV
 param_grid = {
     # n_estimators = Número de árvores (geralmente entre 100-1000).
-    'n_estimators': [50, 100, 200],   
+    'n_estimators': [50,100], #[100, 200],   
     
     # max_depth = Profundidade da árvore (valores baixos reduzem overfitting - comum: 3-10). Com poucas variáveis, não precisa ser muito profundo.
-    'max_depth': [3, 4, 5, 6, 7, 8, 9, 10],   
+    'max_depth': [3],   #3,4,5,6
     
     # learning_rate = Taxa de aprendizado: menor é melhor, mas exige mais estimadores
-    'learning_rate': [0.01, 0.1, 0.2, 0.3], # [0.01, 0.1, 0.2]
+    'learning_rate': [0.01], # [0.01, 0.1, 0.2]
     
     # colsample_bytree = Amostragem de colunas: Em umn modelo com 10 variáveis, 0.7 significa usar 7 variáveis por árvore,
-    'colsample_bytree': [0.6, 0.8],    
+    'colsample_bytree': [0.6], # 0.6, 0.7, 0.8
     
     # subsample = Amostragem de observações/linhas: Pode ajudar a reduzir overfitting (0.5 a 1.0).
-    'subsample': [0.6, 0.8], #[0.7, 0.8, 1]
+    'subsample': [0.6], #[0.6, 0.7, 0.8]
     
     # gamma é um parâmetro de regularização que controla a complexidade da árvore ao exigir uma redução mínima da perda para criar novas divisões.
     #       Configurar de 0 a 2 para testar desde nenhuma restrição até uma restrição moderada.
-    'gamma': [0, 1] #,    
+    'gamma': [0], # 0, 1
     # min_child_weight = parâmetro que controla a divisão. Valores mais altos evitam divisões em nós com poucas amostras.
-    #'min_child_weight': [1]
+    'min_child_weight': [1]
 }
 
 #%% Treinar o modelo com o grid search
@@ -227,6 +227,9 @@ print(grid_search.best_params_)
 #%% Avaliar o modelo XGBoosting com GridSearch
 avaliaPredicao(grid_search.best_estimator_, X_treino_encoded, y_treino, X_teste_encoded, y_teste)
 
+avalia_classificacao(grid_search.best_estimator_, X_treino_encoded, y_treino, base='Treino')
+avalia_classificacao(grid_search.best_estimator_, X_teste_encoded, y_teste, base='Teste')
+
 #%% Imprimir a importância das variáveis após o treinamento do modelo
 
 # model.feature_importances_ retorna um array com as importâncias
@@ -234,7 +237,7 @@ feat_importances = pd.Series(grid_search.best_estimator_.feature_importances_, i
 feat_importances.nlargest(10).plot(kind='barh')
 plt.show()
 
-#%% Treinar o modelo XGBoost com o Otimização Baysiana
+#%% Treinar o modelo XGBoost com o Otimização Bayesiana
 from skopt import BayesSearchCV
 from skopt.space import Real, Integer
 
@@ -287,7 +290,9 @@ print(f"Melhor score: {opt.best_score_}")
 print(f"Tempo de execução do modelo XGBoost com Otimização Bayesiana: {dias * 24 + horas:02}h :{minutos:02}m :{segundos:02}s")
 
 #%% Avaliar o modelo XGBoosting com Otimização Bayesiana
-avaliaPredicao(opt.best_estimator_, X_train, y_train, X_teste_encoded, y_teste)
+# avaliaPredicao(opt.best_estimator_, X_train, y_train, X_teste_encoded, y_teste)
+avalia_classificacao(opt.best_estimator_, X_treino_encoded, y_treino, base='Treino')
+avalia_classificacao(opt.best_estimator_, X_teste_encoded, y_teste, base='Teste')
 
 #%% Imprimir a importância das variáveis após o treinamento do modelo XGBoost com Otimização Bayesiana
 
