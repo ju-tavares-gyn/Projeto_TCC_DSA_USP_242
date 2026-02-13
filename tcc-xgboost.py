@@ -134,7 +134,7 @@ X_features = df_fracao.drop(['ENCERROU_ATIVIDADE'], axis=1)
 y_target = df_fracao['ENCERROU_ATIVIDADE']
 
 # Dividir a base em 80% para treino e 20% para teste / Separa 20% para o teste final (que o modelo nunca verá no treino nem na validação)
-X_treino, X_teste, y_treino, y_teste = train_test_split(X_features, y_target, test_size=0.2, random_state=randomState)
+X_treino, X_teste, y_treino, y_teste = train_test_split(X_features, y_target, test_size=0.3, random_state=randomState)
 
 # sempre importante conferir a cada passo
 print(X_treino.shape)
@@ -250,7 +250,7 @@ data_inicio = datetime.now()
 
 # 1. Definição do Espaço de Busca
 search_spaces = {
-    'n_estimators': Integer(50, 500), # 100, 1000
+    'n_estimators': Integer(50, 200), # 100, 1000
     'max_depth': Integer(3, 10), # 3, 10
     'learning_rate': Real(0.01, 0.3, prior='log-uniform'), # 0.01, 0.3
     'colsample_bytree': Real(0.5, 1.0), # 0.5, 1.0
@@ -300,23 +300,4 @@ avalia_classificacao(opt.best_estimator_, X_teste_encoded, y_teste, base='Teste'
 feat_importances = pd.Series(opt.best_estimator_.feature_importances_, index=X_train.columns)
 feat_importances.nlargest(15).plot(kind='barh')
 # feat_importances.plot(kind='barh')
-plt.show()
-
-#%% 
-def treinarModelo(parametros, X_treino, y_treino, X_teste, y_teste):
-    
-    # learning_rate = 
-    learning_rate = parametros[0] # Taxa de aprendizado: menor é melhor, mas exige mais estimadores  [0.01, 0.1, 0.2]
-    num_leaves = parametros[1] # número máximo de folhas de cada árvore no último nó    
-    min_child_samples =  parametros[2] # quantidade de observações em cada nó    
-    subsample = parametros[3] # Amostragem de observações/linhas: Pode ajudar a reduzir overfitting (0.5 a 1.0).
-    colsample_bytree = parametros[4] # Amostragem de colunas: Em um modelo com 10 variáveis, 0.7 significa usar 7 variáveis por árvore
-    
-    #'n_estimators': [50, 100] # n_estimators = Número de árvores (geralmente entre 100-1000).
-        
-    
-    modelo = xgb.XGBClassifier()    
-    modelo.fit(X_treino, y_treino)
-    p_teste = modelo.predict_proba(X_teste)[:,1]
-    return -roc_auc_score(y_teste, p_teste)
-    
+plt.show()   
