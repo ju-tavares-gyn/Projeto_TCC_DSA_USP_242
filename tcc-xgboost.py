@@ -29,6 +29,10 @@ import xgboost as xgb
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import StratifiedKFold
+
+from skopt import BayesSearchCV
+from skopt.space import Real, Integer
+
 # from sklearn.preprocessing import TargetEncoder
 # from sklearn.metrics import roc_auc_score 
 # from sklearn.metrics import roc_curve
@@ -40,7 +44,10 @@ import category_encoders as ce
 import matplotlib.pyplot as plt
 # import seaborn as sns
 from datetime import datetime
-from funcoes_ajuda import gerarIndicadores, avaliaPredicao, avalia_classificacao
+from funcoes_ajuda import gerarIndicadores
+from funcoes_ajuda import avaliaPredicao
+from funcoes_ajuda import avalia_classificacao
+from funcoes_ajuda import matriz_confusao
 
 #from scipy import stats # Lib serve para padronização de variáveis métricas Z SCORE
 
@@ -108,7 +115,6 @@ dados_final[coluna_target] = np.where(dados_final['SITUACAO_CADASTRAL'] == 'Baix
 # remover colunas que não serão utilizadas nos modelos preditivos
 dados_final.drop(columns=['DATA_SOLICITACAO_REGISTRO', 'DATA_HOMOLOGACAO_REGISTRO'], inplace=True)
 dados_final.drop(columns=['DATA_INICIO_ATIVIDADE', 'DATA_ENCERRAMENTO_ATIVIDADE'], inplace=True)
-# dados_final.drop(columns=['SITUACAO_CADASTRAL'], inplace=True)
 
 #%% Realizar a transformação de variáveis categóricas
 
@@ -124,17 +130,32 @@ dados_final.info()
 
 #%% Separar as variáveis features e target 
 
-# semente que serve para reproduzir o modelo no futuro e obter os mesmos resultados(2360873  = famoso número de telefone do Bozo) 
-randomState=2360873
+# semente que serve para reproduzir o modelo no futuro e obter os mesmos resultados(242 = turma USP/Esalq) 
+randomState=242
 
 # Obter 10% (0.1) das linhas aleatoriamente
-df_fracao = dados_final.sample(frac=1)
+#df_fracao = dados_final.sample(frac=1)
 
-X_features = df_fracao.drop(['ENCERROU_ATIVIDADE'], axis=1) 
-y_target = df_fracao['ENCERROU_ATIVIDADE']
+X_features = dados_final.drop(['ENCERROU_ATIVIDADE'], axis=1) 
+y_target = dados_final['ENCERROU_ATIVIDADE']
+
+# Aplicar estratégia mista de transformação de variáveis categóricas
+colunas_OnHot = ['CADASTRO_VIA_REDESIM', 'SITUACAO_CADASTRAL', 'ENQUADRAMENTO_EMPRESA', 'TIPO_CONTRIBUINTE']
+colunas_TargetEncoder = ['MUNICIPIO', 'NATUREZA_JURIDICA', 'ATIVIDADE_ECONOMICA_DIVISAO']
+
+X_features_trasnformada = X_features.copy()
+
+# One-Hot Encoding para features com poucas categorias
+X_features_trasnformada = pd.get_dummies(X_features, columns=colunas_OnHot, dtype=int, drop_first=True)
 
 # Dividir a base em 80% para treino e 20% para teste / Separa 20% para o teste final (que o modelo nunca verá no treino nem na validação)
-X_treino, X_teste, y_treino, y_teste = train_test_split(X_features, y_target, test_size=0.3, random_state=randomState)
+X_treino, X_teste, y_treino, y_teste = train_test_split(X_features_trasnformada, y_target, test_size=0.2, random_state=randomState)
+
+# TargetEncoder para features com muitas categorias - implementação com suavização (smoothing) para evitar overfitting
+encoder = ce.TargetEncoder(cols=colunas_TargetEncoder, smoothing=1.0)
+X_treino[colunas_TargetEncoder] = encoder.fit_transform(X_treino[colunas_TargetEncoder], y_treino)
+X_teste[colunas_TargetEncoder] = encoder.transform(X_teste[colunas_TargetEncoder])
+
 
 # sempre importante conferir a cada passo
 print(X_treino.shape)
@@ -142,36 +163,10 @@ print(y_treino.shape)
 print(X_teste.shape)
 print(y_teste.shape)
 
-# Aplicar estratégia mista de transformação de variáveis categóricas
-
-# from sklearn.compose import make_column_transformer
-# from sklearn.preprocessing import OneHotEncoder
-
-X_treino_encoded = X_treino.copy()
-X_teste_encoded = X_teste.copy()
-
-colunas_OnHot = ['CADASTRO_VIA_REDESIM', 'SITUACAO_CADASTRAL', 'ENQUADRAMENTO_EMPRESA', 'TIPO_CONTRIBUINTE']
-colunas_TargetEncoder = ['MUNICIPIO', 'NATUREZA_JURIDICA', 'ATIVIDADE_ECONOMICA_DIVISAO']
- 
-# One-Hot Encoding para poucas categorias
-X_treino_encoded = pd.get_dummies(X_treino, columns=colunas_OnHot, drop_first=True) # dtype=int
-X_teste_encoded = pd.get_dummies(X_teste, columns=colunas_OnHot, drop_first=True) 
-
-# Implementação com Suavização (Smoothing) para evitar overfitting
-encoder = ce.TargetEncoder(cols=colunas_TargetEncoder, smoothing=1.0)
-X_treino_encoded[colunas_TargetEncoder] = encoder.fit_transform(X_treino[colunas_TargetEncoder], y_treino)
-X_teste_encoded[colunas_TargetEncoder] = encoder.transform(X_teste[colunas_TargetEncoder])
-        
-    # else:
-    #     # Frequency Encoding para alta cardinalidade
-    #     freq = X_treino[col].value_counts(normalize=True)
-    #     X_treino_encoded[f'{col}_freq'] = X_treino[col].map(freq)
-    #     X_treino_encoded.drop(col, axis=1, inplace=True)
-
 #%% Definir os parâmetros do GridSearchCV
 param_grid = {
     # n_estimators = Número de árvores (geralmente entre 100-1000).
-    'n_estimators': [50,100], #[100, 200],   
+    'n_estimators': [50], #[50, 100, 200, 300],   
     
     # max_depth = Profundidade da árvore (valores baixos reduzem overfitting - comum: 3-10). Com poucas variáveis, não precisa ser muito profundo.
     'max_depth': [3],   #3,4,5,6
@@ -187,13 +182,12 @@ param_grid = {
     
     # gamma é um parâmetro de regularização que controla a complexidade da árvore ao exigir uma redução mínima da perda para criar novas divisões.
     #       Configurar de 0 a 2 para testar desde nenhuma restrição até uma restrição moderada.
-    'gamma': [0], # 0, 1
+    'gamma': [0], # 0, 1, 2
     # min_child_weight = parâmetro que controla a divisão. Valores mais altos evitam divisões em nós com poucas amostras.
     'min_child_weight': [1]
 }
 
 #%% Treinar o modelo com o grid search
-import time
 from datetime import datetime
 # iniciar o cronômetro do tempo de treinamento do modelo
 data_inicio = datetime.now()
@@ -207,7 +201,7 @@ grid_search = GridSearchCV(estimator=modelo_xgb, param_grid=param_grid, scoring=
 
 # treinar o modelo XGBoost com o grid search
 # grid_search.fit(X_treino, y_treino)
-grid_search.fit(X_treino_encoded, y_treino)
+grid_search.fit(X_treino, y_treino)
 
 # finalizar o cronômetro do tempo de treinamento do modelo
 data_fim = datetime.now()
@@ -225,30 +219,26 @@ print("Melhores parâmetros com GridSearch:")
 print(grid_search.best_params_)
 
 #%% Avaliar o modelo XGBoosting com GridSearch
-avaliaPredicao(grid_search.best_estimator_, X_treino_encoded, y_treino, X_teste_encoded, y_teste)
-
-avalia_classificacao(grid_search.best_estimator_, X_treino_encoded, y_treino, base='Treino')
-avalia_classificacao(grid_search.best_estimator_, X_teste_encoded, y_teste, base='Teste')
+avalia_classificacao(grid_search.best_estimator_, X_treino, y_treino, base='Treino')
+avalia_classificacao(grid_search.best_estimator_, X_teste, y_teste, base='Teste')
 
 #%% Imprimir a importância das variáveis após o treinamento do modelo
 
 # model.feature_importances_ retorna um array com as importâncias
-feat_importances = pd.Series(grid_search.best_estimator_.feature_importances_, index=X_treino_encoded.columns)
+feat_importances = pd.Series(grid_search.best_estimator_.feature_importances_, index=X_treino.columns)
 feat_importances.nlargest(10).plot(kind='barh')
 plt.show()
 
 #%% Treinar o modelo XGBoost com o Otimização Bayesiana
-from skopt import BayesSearchCV
-from skopt.space import Real, Integer
 
 # Divisão dos dados (Treino + Validação para o Early Stopping)
 # Dos 80% restantes, separa uma fatia para VALIDAÇÃO (ex: 20% do que sobrou)
-X_train, X_val, y_train, y_val = train_test_split(X_treino_encoded, y_treino, test_size=0.2, random_state=randomState)
+X_train, X_val, y_train, y_val = train_test_split(X_treino, y_treino, test_size=0.2, random_state=randomState)
 
 # iniciar o cronômetro do tempo de treinamento do modelo
 data_inicio = datetime.now()
 
-# 1. Definição do Espaço de Busca
+# 1. Definição do Espaço de Busca. Fixado os melhores parâmetros estimados entre os intervalos testados
 search_spaces = {
     'n_estimators': Integer(50, 200), # 100, 1000
     'max_depth': Integer(3, 10), # 3, 10
@@ -291,8 +281,8 @@ print(f"Tempo de execução do modelo XGBoost com Otimização Bayesiana: {dias 
 
 #%% Avaliar o modelo XGBoosting com Otimização Bayesiana
 # avaliaPredicao(opt.best_estimator_, X_train, y_train, X_teste_encoded, y_teste)
-avalia_classificacao(opt.best_estimator_, X_treino_encoded, y_treino, base='Treino')
-avalia_classificacao(opt.best_estimator_, X_teste_encoded, y_teste, base='Teste')
+avalia_classificacao(opt.best_estimator_, X_treino, y_treino, base='Treino')
+avalia_classificacao(opt.best_estimator_, X_teste, y_teste, base='Teste')
 
 #%% Imprimir a importância das variáveis após o treinamento do modelo XGBoost com Otimização Bayesiana
 
@@ -300,4 +290,72 @@ avalia_classificacao(opt.best_estimator_, X_teste_encoded, y_teste, base='Teste'
 feat_importances = pd.Series(opt.best_estimator_.feature_importances_, index=X_train.columns)
 feat_importances.nlargest(15).plot(kind='barh')
 # feat_importances.plot(kind='barh')
-plt.show()   
+plt.show()
+
+#%% Estimação com modelo logístico binário pela função 'sm.Logit.from_formula'
+import statsmodels.api as sm # estimação de modelos
+from statstests.process import stepwise # procedimento Stepwise
+from statsmodels.iolib.summary2 import summary_col # comparação entre modelos
+
+
+# Aplicar One-Hot Encoding para features com poucas categorias
+X_features_trasnformada = pd.get_dummies(X_features, columns=colunas_OnHot, dtype=int, drop_first=True)
+
+# Aplicar Frequency Encoding para alta cardinalidade
+for col in colunas_TargetEncoder:
+    freq = X_features_trasnformada[col].value_counts(normalize=True)
+    X_features_trasnformada[f'{col}_freq'] = X_features_trasnformada[col].map(freq)
+    X_features_trasnformada.drop(col, axis=1, inplace=True)
+
+# Remove espaços e substituir '_'. Substituir barra por '_'
+X_features_trasnformada.columns = X_features_trasnformada.columns.str.strip().str.replace(' ', '_')
+X_features_trasnformada.columns = X_features_trasnformada.columns.str.replace('/', '_')
+
+# Aplicar TargetEncoder para features com muitas categorias
+#encoder = ce.TargetEncoder(cols=colunas_TargetEncoder) #, smoothing=1.0)
+#X_features_trasnformada[colunas_TargetEncoder] = encoder.fit_transform(X_features_trasnformada[colunas_TargetEncoder], y_target)
+
+X_features_trasnformada = pd.concat([X_features_trasnformada, y_target], axis=1)
+
+# Tabela de frequências absolutas da variável dependente 'ENCERROU_ATIVIDADE'
+X_features_trasnformada['ENCERROU_ATIVIDADE'].value_counts().sort_index()
+
+# Definição da fórmula utilizada no modelo
+# lista_colunas_lb = list(X_features_trasnformada.drop(columns='ENCERROU_ATIVIDADE').columns)
+# formula_modelo_lb = ' + '.join(lista_colunas_lb)
+# formula_modelo_lb = "ENCERROU_ATIVIDADE ~ " + formula_modelo_lb
+
+# ENCERROU_ATIVIDADE ~ QTDE_SOCIOS + CAPITAL_SOCIAL + TempoAtividadeEmpresarial + CADASTRO_VIA_REDESIM_S + SITUACAO_CADASTRAL_Ativo + SITUACAO_CADASTRAL_Baixado + SITUACAO_CADASTRAL_Cassado + SITUACAO_CADASTRAL_Paralisado + SITUACAO_CADASTRAL_Suspenso + ENQUADRAMENTO_EMPRESA_Microempresa + ENQUADRAMENTO_EMPRESA_Normal + ENQUADRAMENTO_EMPRESA_Simples_Nacional_SIMEI + TIPO_CONTRIBUINTE_COMERCIANTE_ATACADISTA + TIPO_CONTRIBUINTE_COMERCIANTE_VAREJISTA + TIPO_CONTRIBUINTE_EXTRATOR_MINERAL_OU_FÓSSIL + TIPO_CONTRIBUINTE_INDUSTRIAL + TIPO_CONTRIBUINTE_OUTRO_PRESTADOR_DE_SERVIÇO + TIPO_CONTRIBUINTE_PRESTADOR_DE_SERVIÇO_DE_COMUNICAÇÃO + TIPO_CONTRIBUINTE_PRODUTOR_RURAL + TIPO_CONTRIBUINTE_PRODUTOR_URBANO + TIPO_CONTRIBUINTE_TRANSPORTADOR + MUNICIPIO_freq + NATUREZA_JURIDICA_freq + ATIVIDADE_ECONOMICA_DIVISAO_freq
+formula = 'ENCERROU_ATIVIDADE ~ SITUACAO_CADASTRAL_Baixado + SITUACAO_CADASTRAL_Cassado + SITUACAO_CADASTRAL_Ativo + SITUACAO_CADASTRAL_Suspenso + ENQUADRAMENTO_EMPRESA_Microempresa + ENQUADRAMENTO_EMPRESA_Normal + ENQUADRAMENTO_EMPRESA_Simples_Nacional_SIMEI + TIPO_CONTRIBUINTE_COMERCIANTE_ATACADISTA + TIPO_CONTRIBUINTE_COMERCIANTE_VAREJISTA + TIPO_CONTRIBUINTE_EXTRATOR_MINERAL_OU_FÓSSIL + TIPO_CONTRIBUINTE_INDUSTRIAL + TIPO_CONTRIBUINTE_OUTRO_PRESTADOR_DE_SERVIÇO + TIPO_CONTRIBUINTE_PRESTADOR_DE_SERVIÇO_DE_COMUNICAÇÃO + TIPO_CONTRIBUINTE_PRODUTOR_RURAL + TIPO_CONTRIBUINTE_PRODUTOR_URBANO + TIPO_CONTRIBUINTE_TRANSPORTADOR + MUNICIPIO_freq + NATUREZA_JURIDICA_freq + ATIVIDADE_ECONOMICA_DIVISAO_freq + TempoAtividadeEmpresarial + QTDE_SOCIOS' # CADASTRO_VIA_REDESIM_S + SITUACAO_CADASTRAL_Paralisado + CAPITAL_SOCIAL 
+
+modelo_logistico_bin = sm.Logit.from_formula(formula, X_features_trasnformada).fit()
+
+# Parâmetros do modelo
+modelo_logistico_bin.summary()
+
+summary_col([modelo_logistico_bin],
+            model_names=["MODELO"],
+            stars=True,
+            info_dict = {
+                'N':lambda x: "{0:d}".format(int(x.nobs)),
+                'Log-lik':lambda x: "{:.3f}".format(x.llf)
+        })
+
+#%% Adicionando os valores previstos de probabilidade na base de dados
+X_features_trasnformada['phat'] = modelo_logistico_bin.predict()
+
+# Matriz de confusão para cutoff = 0.5
+matriz_confusao(observado=X_features_trasnformada['ENCERROU_ATIVIDADE'],
+                predicts=X_features_trasnformada['phat'], 
+                cutoff=0.5)
+
+# Matriz de confusão para cutoff = 0.3
+matriz_confusao(observado=X_features_trasnformada['ENCERROU_ATIVIDADE'],
+                predicts=X_features_trasnformada['phat'], 
+                cutoff=0.3)
+
+# Matriz de confusão para cutoff = 0.7
+matriz_confusao(observado=X_features_trasnformada['ENCERROU_ATIVIDADE'],
+                predicts=X_features_trasnformada['phat'], 
+                cutoff=0.7)
+

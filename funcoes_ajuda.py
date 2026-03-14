@@ -13,8 +13,14 @@ import pandas as pd
 import numpy as np
 import category_encoders as ce
 
-from sklearn.metrics import accuracy_score, classification_report, \
-    confusion_matrix, balanced_accuracy_score, roc_auc_score, roc_curve
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import classification_report
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import balanced_accuracy_score
+from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_curve
+from sklearn.metrics import ConfusionMatrixDisplay
+from sklearn.metrics import recall_score
     
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -348,4 +354,33 @@ def gerarIndicadores(df):
     # remover do dataframe colunas temporarias utilizadas para calcular os indicadores
     df.drop(columns=['DataHomologacaoAno', 'tempo_abertura', 'tempo_sobrevivencia_meses'], inplace=True)
     
-   
+def matriz_confusao(predicts, observado, cutoff):
+    
+    values = predicts.values
+    
+    predicao_binaria = []
+        
+    for item in values:
+        if item < cutoff:
+            predicao_binaria.append(0)
+        else:
+            predicao_binaria.append(1)
+           
+    cm = confusion_matrix(predicao_binaria, observado)
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm)
+    disp.plot()
+    plt.xlabel('True')
+    plt.ylabel('Classified')
+    plt.gca().invert_xaxis()
+    plt.gca().invert_yaxis()
+    plt.show()
+        
+    sensitividade = recall_score(observado, predicao_binaria, pos_label=1)
+    especificidade = recall_score(observado, predicao_binaria, pos_label=0)
+    acuracia = accuracy_score(observado, predicao_binaria)
+
+    # Visualização dos principais indicadores desta matriz de confusão
+    indicadores = pd.DataFrame({'Sensitividade':[sensitividade],
+                                'Especificidade':[especificidade],
+                                'Acurácia':[acuracia]})
+    return indicadores
