@@ -240,14 +240,20 @@ data_inicio = datetime.now()
 
 # 1. Definição do Espaço de Busca. Fixado os melhores parâmetros estimados entre os intervalos testados
 search_spaces = {
-    'n_estimators': Integer(50, 200), # 100, 1000
-    'max_depth': Integer(3, 10), # 3, 10
-    'learning_rate': Real(0.01, 0.3, prior='log-uniform'), # 0.01, 0.3
-    'colsample_bytree': Real(0.5, 1.0), # 0.5, 1.0
-    'subsample': Real(0.5, 1.0), # 0.5, 1.0
-    'gamma': Real(1e-6, 1.0, prior='log-uniform') # 1e-6, 1.0
+    'n_estimators': Integer(135, 136), # 100, 1000
+    'max_depth': Integer(7, 8), # 3, 10
+    'learning_rate': Real(0.09, 0.094, prior='log-uniform'), # 0.01, 0.3
+    'colsample_bytree': Real(0.79, 0.795), # 0.5, 1.0
+    'subsample': Real(0.8, 0.83), # 0.5, 1.0
+    'gamma': Real(1e-6, 1.7e-05, prior='log-uniform') # 1e-6, 1.0
 }
 
+#Melhores parâmetros com otimização Bayesiana: OrderedDict({'colsample_bytree': 0.7950160418010597, 
+#                                                           'gamma': 1.723247214111904e-05, 
+#                                                           'learning_rate': 0.09429320873621094, 
+#                                                           'max_depth': 8, 
+#                                                           'n_estimators': 136, 
+#                                                           'subsample': 0.8350202858637643})
 
 # 2. Instância do Modelo
 xgb_model = xgb.XGBClassifier(objective='binary:logistic', eval_metric='logloss', early_stopping_rounds=20) # Definido na instância para versões recentes
@@ -256,7 +262,7 @@ xgb_model = xgb.XGBClassifier(objective='binary:logistic', eval_metric='logloss'
 # 3. Configuração da Busca Bayesiana
 opt = BayesSearchCV(estimator=xgb_model,
                     search_spaces=search_spaces,
-                    n_iter=32,           # Número de combinações a testar
+                    n_iter=10,           # Número de combinações a testar 32
                     cv=5,                # Cross-validation
                     n_jobs=-1,           # Paralelização
                     random_state=randomState
