@@ -99,7 +99,38 @@ def avaliaPredicao(modelo, X_train, y_train, X_test, y_test):
     plt.legend()
     plt.show()
 
-def avalia_classificacao(modelo, X, y, rótulos_y=['Em Atividade', 'Encerrou Atividade'], base = 'treino'):
+def matriz_confusao(predicts, observado, cutoff):
+    
+    values = predicts.values
+    
+    predicao_binaria = []
+        
+    for item in values:
+        if item < cutoff:
+            predicao_binaria.append(0)
+        else:
+            predicao_binaria.append(1)
+           
+    cm = confusion_matrix(predicao_binaria, observado)
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm)
+    disp.plot()
+    plt.xlabel('True')
+    plt.ylabel('Classified')
+    plt.gca().invert_xaxis()
+    plt.gca().invert_yaxis()
+    plt.show()
+        
+    sensitividade = recall_score(observado, predicao_binaria, pos_label=1)
+    especificidade = recall_score(observado, predicao_binaria, pos_label=0)
+    acuracia = accuracy_score(observado, predicao_binaria)
+
+    # Visualização dos principais indicadores desta matriz de confusão
+    indicadores = pd.DataFrame({'Sensitividade':[sensitividade],
+                                'Especificidade':[especificidade],
+                                'Acurácia':[acuracia]})
+    return indicadores
+
+def avalia_classificacao(modelo, X, y, rótulos_y=['Em Atividade','Encerrou Atividade'], base = 'treino'):
     
     # Calcular as classificações preditas
     pred = modelo.predict(X)
@@ -122,10 +153,7 @@ def avalia_classificacao(modelo, X, y, rótulos_y=['Em Atividade', 'Encerrou Ati
     # print(f"GINI: {(2*auc_score-1):.2%}")
     
     # Visualização gráfica
-    sns.heatmap(cm, 
-                annot=True, fmt='d', cmap='viridis', 
-                xticklabels=rótulos_y, 
-                yticklabels=rótulos_y)
+    sns.heatmap(cm, annot=True, fmt='d', cmap='viridis', xticklabels=rótulos_y, yticklabels=rótulos_y)
     
     # Relatório de classificação do Scikit
     print('\n', classification_report(y, pred))
@@ -136,7 +164,7 @@ def avalia_classificacao(modelo, X, y, rótulos_y=['Em Atividade', 'Encerrou Ati
     # Plotar a Curva ROC
     plt.figure(figsize=(8, 6))
     plt.plot(fpr, tpr, color='blue', label=f'Curva ROC (AUC = {auc_score:.2f})')
-    plt.plot([0, 1], [0, 1], color='red', linestyle='--')  # Linha de referência (modelo aleatório)
+    plt.plot([1, 0], [1, 0], color='red', linestyle='--')  # Linha de referência (modelo aleatório)
     plt.xlabel("Taxa de Falsos Positivos (FPR)")
     plt.ylabel("Taxa de Verdadeiros Positivos (TPR)")
     plt.title(f"Curva ROC - base de {base}")
@@ -352,35 +380,4 @@ def gerarIndicadores(df):
     plt.show()
     
     # remover do dataframe colunas temporarias utilizadas para calcular os indicadores
-    df.drop(columns=['DataHomologacaoAno', 'tempo_abertura', 'tempo_sobrevivencia_meses'], inplace=True)
-    
-def matriz_confusao(predicts, observado, cutoff):
-    
-    values = predicts.values
-    
-    predicao_binaria = []
-        
-    for item in values:
-        if item < cutoff:
-            predicao_binaria.append(0)
-        else:
-            predicao_binaria.append(1)
-           
-    cm = confusion_matrix(predicao_binaria, observado)
-    disp = ConfusionMatrixDisplay(confusion_matrix=cm)
-    disp.plot()
-    plt.xlabel('True')
-    plt.ylabel('Classified')
-    plt.gca().invert_xaxis()
-    plt.gca().invert_yaxis()
-    plt.show()
-        
-    sensitividade = recall_score(observado, predicao_binaria, pos_label=1)
-    especificidade = recall_score(observado, predicao_binaria, pos_label=0)
-    acuracia = accuracy_score(observado, predicao_binaria)
-
-    # Visualização dos principais indicadores desta matriz de confusão
-    indicadores = pd.DataFrame({'Sensitividade':[sensitividade],
-                                'Especificidade':[especificidade],
-                                'Acurácia':[acuracia]})
-    return indicadores
+    df.drop(columns=['DataHomologacaoAno', 'tempo_abertura', 'tempo_sobrevivencia_meses'], inplace=True)    

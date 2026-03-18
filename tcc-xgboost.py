@@ -45,7 +45,7 @@ import matplotlib.pyplot as plt
 # import seaborn as sns
 from datetime import datetime
 from funcoes_ajuda import gerarIndicadores
-from funcoes_ajuda import avaliaPredicao
+#from funcoes_ajuda import avaliaPredicao
 from funcoes_ajuda import avalia_classificacao
 from funcoes_ajuda import matriz_confusao
 
@@ -166,13 +166,13 @@ print(y_teste.shape)
 #%% Definir os parâmetros do GridSearchCV
 param_grid = {
     # n_estimators = Número de árvores (geralmente entre 100-1000).
-    'n_estimators': [50], #[50, 100, 200, 300],   
+    'n_estimators': [100], #[50, 100, 150, 300],   
     
     # max_depth = Profundidade da árvore (valores baixos reduzem overfitting - comum: 3-10). Com poucas variáveis, não precisa ser muito profundo.
     'max_depth': [3],   #3,4,5,6
     
     # learning_rate = Taxa de aprendizado: menor é melhor, mas exige mais estimadores
-    'learning_rate': [0.01], # [0.01, 0.1, 0.2]
+    'learning_rate': [0.1], # [0.01, 0.1, 0.2]
     
     # colsample_bytree = Amostragem de colunas: Em umn modelo com 10 variáveis, 0.7 significa usar 7 variáveis por árvore,
     'colsample_bytree': [0.6], # 0.6, 0.7, 0.8
@@ -222,8 +222,14 @@ print(grid_search.best_params_)
 avalia_classificacao(grid_search.best_estimator_, X_treino, y_treino, base='Treino')
 avalia_classificacao(grid_search.best_estimator_, X_teste, y_teste, base='Teste')
 
-#%% Imprimir a importância das variáveis após o treinamento do modelo
+X_teste['phat']  = grid_search.best_estimator_.predict(X_teste)
 
+# Matriz de confusão para cutoff = 0.5
+matriz_confusao(observado=y_teste, predicts=X_teste['phat'], cutoff=0.5)
+
+X_teste = X_teste.drop('phat', axis=1)
+
+#%% Imprimir a importância das variáveis após o treinamento do modelo
 # model.feature_importances_ retorna um array com as importâncias
 feat_importances = pd.Series(grid_search.best_estimator_.feature_importances_, index=X_treino.columns)
 feat_importances.nlargest(10).plot(kind='barh')
@@ -242,7 +248,7 @@ data_inicio = datetime.now()
 search_spaces = {
     'n_estimators': Integer(135, 136), # 100, 1000
     'max_depth': Integer(7, 8), # 3, 10
-    'learning_rate': Real(0.09, 0.094, prior='log-uniform'), # 0.01, 0.3
+    'learning_rate': Real(0.093, 0.094, prior='log-uniform'), # 0.01, 0.3
     'colsample_bytree': Real(0.79, 0.795), # 0.5, 1.0
     'subsample': Real(0.8, 0.83), # 0.5, 1.0
     'gamma': Real(1e-6, 1.7e-05, prior='log-uniform') # 1e-6, 1.0
@@ -290,6 +296,13 @@ print(f"Tempo de execução do modelo XGBoost com Otimização Bayesiana: {dias 
 avalia_classificacao(opt.best_estimator_, X_treino, y_treino, base='Treino')
 avalia_classificacao(opt.best_estimator_, X_teste, y_teste, base='Teste')
 
+X_teste['phat']  = opt.best_estimator_.predict(X_teste)
+
+# Matriz de confusão para cutoff = 0.5
+matriz_confusao(observado=y_teste, predicts=X_teste['phat'], cutoff=0.5)
+
+X_teste = X_teste.drop('phat', axis=1)
+
 #%% Imprimir a importância das variáveis após o treinamento do modelo XGBoost com Otimização Bayesiana
 
 # model.feature_importances_ retorna um array com as importâncias
@@ -302,7 +315,6 @@ plt.show()
 import statsmodels.api as sm # estimação de modelos
 from statstests.process import stepwise # procedimento Stepwise
 from statsmodels.iolib.summary2 import summary_col # comparação entre modelos
-
 
 # Aplicar One-Hot Encoding para features com poucas categorias
 X_features_trasnformada = pd.get_dummies(X_features, columns=colunas_OnHot, dtype=int, drop_first=True)
