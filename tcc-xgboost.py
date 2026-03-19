@@ -303,7 +303,6 @@ plt.show()
 
 #%% Estimação com modelo logístico binário pela função 'sm.Logit.from_formula'
 import statsmodels.api as sm # estimação de modelos
-from statstests.process import stepwise # procedimento Stepwise
 from statsmodels.iolib.summary2 import summary_col # comparação entre modelos
 
 # Aplicar One-Hot Encoding para features com poucas categorias
@@ -315,7 +314,7 @@ for col in colunas_TargetEncoder:
     X_features_trasnformada[f'{col}_freq'] = X_features_trasnformada[col].map(freq)
     X_features_trasnformada.drop(col, axis=1, inplace=True)
 
-# Remove espaços e substituir '_'. Substituir barra por '_'
+# Ajustar nome das variáveis - remover espaços e substituir '_'. Substituir barra por '_'
 X_features_trasnformada.columns = X_features_trasnformada.columns.str.strip().str.replace(' ', '_')
 X_features_trasnformada.columns = X_features_trasnformada.columns.str.replace('/', '_')
 
@@ -335,6 +334,7 @@ X_features_trasnformada['ENCERROU_ATIVIDADE'].value_counts().sort_index()
 
 # ENCERROU_ATIVIDADE ~ QTDE_SOCIOS + CAPITAL_SOCIAL + TempoAtividadeEmpresarial + CADASTRO_VIA_REDESIM_S + SITUACAO_CADASTRAL_Ativo + SITUACAO_CADASTRAL_Baixado + SITUACAO_CADASTRAL_Cassado + SITUACAO_CADASTRAL_Paralisado + SITUACAO_CADASTRAL_Suspenso + ENQUADRAMENTO_EMPRESA_Microempresa + ENQUADRAMENTO_EMPRESA_Normal + ENQUADRAMENTO_EMPRESA_Simples_Nacional_SIMEI + TIPO_CONTRIBUINTE_COMERCIANTE_ATACADISTA + TIPO_CONTRIBUINTE_COMERCIANTE_VAREJISTA + TIPO_CONTRIBUINTE_EXTRATOR_MINERAL_OU_FÓSSIL + TIPO_CONTRIBUINTE_INDUSTRIAL + TIPO_CONTRIBUINTE_OUTRO_PRESTADOR_DE_SERVIÇO + TIPO_CONTRIBUINTE_PRESTADOR_DE_SERVIÇO_DE_COMUNICAÇÃO + TIPO_CONTRIBUINTE_PRODUTOR_RURAL + TIPO_CONTRIBUINTE_PRODUTOR_URBANO + TIPO_CONTRIBUINTE_TRANSPORTADOR + MUNICIPIO_freq + NATUREZA_JURIDICA_freq + ATIVIDADE_ECONOMICA_DIVISAO_freq
 formula = 'ENCERROU_ATIVIDADE ~ SITUACAO_CADASTRAL_Baixado + SITUACAO_CADASTRAL_Cassado + SITUACAO_CADASTRAL_Ativo + SITUACAO_CADASTRAL_Suspenso + ENQUADRAMENTO_EMPRESA_Microempresa + ENQUADRAMENTO_EMPRESA_Normal + ENQUADRAMENTO_EMPRESA_Simples_Nacional_SIMEI + TIPO_CONTRIBUINTE_COMERCIANTE_ATACADISTA + TIPO_CONTRIBUINTE_COMERCIANTE_VAREJISTA + TIPO_CONTRIBUINTE_EXTRATOR_MINERAL_OU_FÓSSIL + TIPO_CONTRIBUINTE_INDUSTRIAL + TIPO_CONTRIBUINTE_OUTRO_PRESTADOR_DE_SERVIÇO + TIPO_CONTRIBUINTE_PRESTADOR_DE_SERVIÇO_DE_COMUNICAÇÃO + TIPO_CONTRIBUINTE_PRODUTOR_RURAL + TIPO_CONTRIBUINTE_PRODUTOR_URBANO + TIPO_CONTRIBUINTE_TRANSPORTADOR + MUNICIPIO_freq + NATUREZA_JURIDICA_freq + ATIVIDADE_ECONOMICA_DIVISAO_freq + TempoAtividadeEmpresarial + QTDE_SOCIOS' # CADASTRO_VIA_REDESIM_S + SITUACAO_CADASTRAL_Paralisado + CAPITAL_SOCIAL 
+formula = 'ENCERROU_ATIVIDADE ~ SITUACAO_CADASTRAL_Ativo + SITUACAO_CADASTRAL_Baixado + SITUACAO_CADASTRAL_Suspenso + ENQUADRAMENTO_EMPRESA_Normal + MUNICIPIO_freq + NATUREZA_JURIDICA_freq + TempoAtividadeEmpresarial + QTDE_SOCIOS'
 
 modelo_logistico_bin = sm.Logit.from_formula(formula, X_features_trasnformada).fit()
 
@@ -349,8 +349,17 @@ summary_col([modelo_logistico_bin],
                 'Log-lik':lambda x: "{:.3f}".format(x.llf)
         })
 
+#%% Carregamento da função 'stepwise' do pacote 'statstests.process'
+# Autores do pacote: Luiz Paulo Fávero e Helder Prado Santos
+# https://stats-tests.github.io/statstests/
+from statstests.process import stepwise # procedimento Stepwise
+
+#Estimação do modelo por meio do procedimento Stepwise
+step_modelo_logistico_bin = stepwise(modelo_logistico_bin, pvalue_limit=0.05)
+step_modelo_logistico_bin.summary()
+
 #%% Adicionando os valores previstos de probabilidade na base de dados
-X_features_trasnformada['phat'] = modelo_logistico_bin.predict()
+X_features_trasnformada['phat'] = step_modelo_logistico_bin.predict()
 
 # Matriz de confusão para cutoff = 0.5
 # Imprimir matriz de confusão e curva roc, além dos 
