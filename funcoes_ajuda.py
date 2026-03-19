@@ -25,8 +25,64 @@ from sklearn.metrics import recall_score
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-from datetime import datetime
-from dateutil.relativedelta import relativedelta
+# from datetime import datetime
+# from dateutil.relativedelta import relativedelta
+
+def gerarMetricasModelo(predicts, observado, cutoff=0.5, base='Treino'):
+    
+    values = predicts.values
+    
+    predicao_binaria = []
+        
+    for item in values:
+        if item < cutoff:
+            predicao_binaria.append(0)
+        else:
+            predicao_binaria.append(1)
+           
+    cm = confusion_matrix(predicao_binaria, observado)
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm)
+    disp.plot(values_format='d')# Formatar como inteiro os valores da matriz de confusão
+    plt.title('Matriz de Confusão - Base de ' + base)    
+    plt.xlabel('Observado(Real)')
+    plt.ylabel('Classificado')
+    plt.gca().invert_xaxis()
+    plt.gca().invert_yaxis()
+    plt.show()
+        
+    sensitividade = recall_score(observado, predicao_binaria, pos_label=1)
+    especificidade = recall_score(observado, predicao_binaria, pos_label=0)
+    acuracia = accuracy_score(observado, predicao_binaria)
+
+    # Calculando AUC
+    auc_score = roc_auc_score(observado, predicao_binaria)
+    #print(f"AUC-ROC: {auc_score:.2%}")
+    
+    # Visualização dos principais indicadores desta matriz de confusão
+    indicadores = pd.DataFrame({'Sensitividade':[sensitividade],
+                                'Especificidade':[especificidade],
+                                'Acurácia':[acuracia],
+                                'AUC-ROC':[auc_score]})
+        
+    # print(f"GINI: {(2*auc_score-1):.2%}")
+    print('\n',indicadores)
+    
+    # Relatório de classificação do Scikit
+    print('\n', classification_report(observado, predicao_binaria))
+    
+    # Gerar a Curva ROC
+    fpr, tpr, thresholds = roc_curve(observado, predicao_binaria)
+    
+    # Plotar a Curva ROC
+    plt.figure(figsize=(6, 4))
+    plt.plot(fpr, tpr, color='blue', label=f'Curva ROC (AUC = {auc_score:.2f})')
+    plt.plot([1, 0], [1, 0], color='red', linestyle='--')  # Linha de referência (modelo aleatório)
+    plt.xlabel("Taxa de Falsos Positivos (FPR)")
+    plt.ylabel("Taxa de Verdadeiros Positivos (TPR)")
+    plt.title(f"Curva ROC - base de {base}")
+    plt.legend(loc="lower right")
+    plt.grid()
+    plt.show()
 
 ## Faz a transformação das features categóricas usando a Estratégia Baseada na Cardinalidade:
 ## - One-Hot Encoding para cardinalidade até 10 categorias
@@ -99,36 +155,7 @@ def avaliaPredicao(modelo, X_train, y_train, X_test, y_test):
     plt.legend()
     plt.show()
 
-def matriz_confusao(predicts, observado, cutoff):
-    
-    values = predicts.values
-    
-    predicao_binaria = []
-        
-    for item in values:
-        if item < cutoff:
-            predicao_binaria.append(0)
-        else:
-            predicao_binaria.append(1)
-           
-    cm = confusion_matrix(predicao_binaria, observado)
-    disp = ConfusionMatrixDisplay(confusion_matrix=cm)
-    disp.plot()
-    plt.xlabel('Real(True)')
-    plt.ylabel('Classificado')
-    plt.gca().invert_xaxis()
-    plt.gca().invert_yaxis()
-    plt.show()
-        
-    sensitividade = recall_score(observado, predicao_binaria, pos_label=1)
-    especificidade = recall_score(observado, predicao_binaria, pos_label=0)
-    acuracia = accuracy_score(observado, predicao_binaria)
 
-    # Visualização dos principais indicadores desta matriz de confusão
-    indicadores = pd.DataFrame({'Sensitividade':[sensitividade],
-                                'Especificidade':[especificidade],
-                                'Acurácia':[acuracia]})
-    return indicadores
 
 def avalia_classificacao(modelo, X, y, rótulos_y=['Em Atividade','Encerrou Atividade'], base = 'treino'):
     
@@ -207,38 +234,6 @@ def relatorio_missing(df):
     return pd.DataFrame({'Pct_missing': df.isna().mean().apply(lambda x: f"{x:.1%}"),
                           'Freq_missing': df.isna().sum().apply(lambda x: f"{x:,.0f}").replace(',','.')})
 
-
-def diagnóstico(df_, var, vresp='survived', pred = 'pred', max_classes=5):
-    """
-    Gera um gráfico descritivo da taxa de sobreviventes por categoria da variável especificada.
-    
-    Parâmetros:
-    df : DataFrame - Base de dados a ser analisada.
-    var : str - Nome da variável categórica a ser analisada.
-    """
-    
-    df = df_.copy()
-    
-    if df[var].nunique()>max_classes:
-        df[var] = pd.qcut(df[var], max_classes, duplicates='drop')
-    
-    fig, ax1 = plt.subplots(figsize=(10, 6))
-    
-    sns.pointplot(data=df, y=vresp, x=var, ax=ax1)
-    sns.pointplot(data=df, y=pred, x=var, ax=ax1, color='red', linestyles='--', ci=None)
-    
-    # Criar o segundo eixo y para a taxa de sobreviventes
-    ax2 = ax1.twinx()
-    sns.countplot(data=df, x=var, palette='viridis', alpha=0.5, ax=ax2)
-    ax2.set_ylabel('Frequência', color='blue')
-    ax2.tick_params(axis='y', labelcolor='blue')
-    
-    ax1.set_zorder(2)
-    ax1.patch.set_visible(False)  # Tornar o fundo do eixo 1 transparente
-    
-    # Exibir o gráfico
-    plt.show()
-
 def transformar_categoricas_dummies(df):
     for coluna in df.select_dtypes(include = ['object','string']).columns:
         dummies = pd.get_dummies(df[coluna], prefix = coluna, drop_first=True)
@@ -246,41 +241,6 @@ def transformar_categoricas_dummies(df):
         df = df.drop(coluna, axis=1)
     return df
     
-# Calcula a diferença de datas usando relativedelta
-def calculaDiferencaDatasMeses(data_inicial, data_final):
-    # Converte as strings para objetos datetime
-    formatoData = "%d/%m/%Y %H:%M:%S"
-    data1 = datetime.strptime(data_inicial, formatoData)
-    data2 = datetime.strptime(data_final, formatoData)
-    return relativedelta(data2, data1).months
-
-def calculaDiferencaDatasDias(data_inicial, data_final):
-    # Converte as strings para objetos datetime
-    formatoData = "%d/%m/%Y %H:%M:%S"
-    data1 = datetime.strptime(data_inicial, formatoData)
-    data2 = datetime.strptime(data_final, formatoData)
-    return relativedelta(data2, data1).days
-
-def calculaDiferencaDatasHoras(data_inicial, data_final):
-    # Converte as strings para objetos datetime
-    formatoData = "%d/%m/%Y %H:%M:%S"
-    data1 = datetime.strptime(data_inicial, formatoData)
-    data2 = datetime.strptime(data_final, formatoData)
-    return relativedelta(data2, data1).hours
-
-def calculaDiferencaDatasMinutos(data_inicial, data_final):
-    # Converte as strings para objetos datetime
-    formatoData = "%d/%m/%Y %H:%M:%S"
-    data1 = datetime.strptime(data_inicial, formatoData)
-    data2 = datetime.strptime(data_final, formatoData)
-    return relativedelta(data2, data1).minutes
-
-def coverterDataStringDateTime(data_str):
-    # Converte as strings para objetos datetime
-    formatoData = "%d/%m/%Y %H:%M:%S"
-    dataConvertida = datetime.strptime(data_str, formatoData)    
-    return dataConvertida.date()
-
 # Gerar os indicadores de desempenho
 def gerarIndicadores(df):
 

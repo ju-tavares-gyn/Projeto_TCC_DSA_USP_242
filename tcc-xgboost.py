@@ -20,11 +20,8 @@ github: https://github.com/ju-tavares-gyn/Projeto_TCC_DSA_USP_242.git
 #!pip install scikit-optimize
 
 #%% Importando os pacotes
-
 import pandas as pd
 import numpy as np
-
-# from xgboost import XGBClassifier
 import xgboost as xgb
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import GridSearchCV
@@ -33,23 +30,15 @@ from sklearn.model_selection import StratifiedKFold
 from skopt import BayesSearchCV
 from skopt.space import Real, Integer
 
-# from sklearn.preprocessing import TargetEncoder
-# from sklearn.metrics import roc_auc_score 
-# from sklearn.metrics import roc_curve
-# from sklearn.metrics import accuracy_score
-
 import category_encoders as ce
 
 # from scipy.stats import zscore
 import matplotlib.pyplot as plt
-# import seaborn as sns
+
 from datetime import datetime
 from funcoes_ajuda import gerarIndicadores
-#from funcoes_ajuda import avaliaPredicao
-from funcoes_ajuda import avalia_classificacao
-from funcoes_ajuda import matriz_confusao
+from funcoes_ajuda import gerarMetricasModelo
 
-#from scipy import stats # Lib serve para padronização de variáveis métricas Z SCORE
 
 #%% Carregando os banco de dados antes e pós RedeSim
 variaveis = ['CADASTRO_VIA_REDESIM', 'DATA_SOLICITACAO_REGISTRO', 'DATA_HOMOLOGACAO_REGISTRO',  
@@ -219,14 +208,15 @@ print("Melhores parâmetros com GridSearch:")
 print(grid_search.best_params_)
 
 #%% Avaliar o modelo XGBoosting com GridSearch
-avalia_classificacao(grid_search.best_estimator_, X_treino, y_treino, base='Treino')
-avalia_classificacao(grid_search.best_estimator_, X_teste, y_teste, base='Teste')
-
+X_treino['phat']  = grid_search.best_estimator_.predict(X_treino)
 X_teste['phat']  = grid_search.best_estimator_.predict(X_teste)
 
-# Matriz de confusão para cutoff = 0.5
-matriz_confusao(observado=y_teste, predicts=X_teste['phat'], cutoff=0.5)
+# Imprimir matriz de confusão e curva roc, além dos 
+# indicadores com sensitividade, especificidade, acurácia, auc_roc, precision, recall, f1-score
+gerarMetricasModelo(observado=y_treino, predicts=X_treino['phat'], base='Treino')
+gerarMetricasModelo(observado=y_teste, predicts=X_teste['phat'], base='Teste')
 
+X_treino = X_treino.drop('phat', axis=1)
 X_teste = X_teste.drop('phat', axis=1)
 
 #%% Imprimir a importância das variáveis após o treinamento do modelo
@@ -292,15 +282,15 @@ print(f"Melhor score: {opt.best_score_}")
 print(f"Tempo de execução do modelo XGBoost com Otimização Bayesiana: {dias * 24 + horas:02}h :{minutos:02}m :{segundos:02}s")
 
 #%% Avaliar o modelo XGBoosting com Otimização Bayesiana
-# avaliaPredicao(opt.best_estimator_, X_train, y_train, X_teste_encoded, y_teste)
-avalia_classificacao(opt.best_estimator_, X_treino, y_treino, base='Treino')
-avalia_classificacao(opt.best_estimator_, X_teste, y_teste, base='Teste')
-
+X_treino['phat']  = opt.best_estimator_.predict(X_treino)
 X_teste['phat']  = opt.best_estimator_.predict(X_teste)
 
-# Matriz de confusão para cutoff = 0.5
-matriz_confusao(observado=y_teste, predicts=X_teste['phat'], cutoff=0.5)
+# Imprimir matriz de confusão e curva roc, além dos 
+# indicadores com sensitividade, especificidade, acurácia, auc_roc, precision, recall, f1-score
+gerarMetricasModelo(observado=y_treino, predicts=X_treino['phat'], base='Treino')
+gerarMetricasModelo(observado=y_teste, predicts=X_teste['phat'], base='Teste')
 
+X_treino = X_treino.drop('phat', axis=1)
 X_teste = X_teste.drop('phat', axis=1)
 
 #%% Imprimir a importância das variáveis após o treinamento do modelo XGBoost com Otimização Bayesiana
@@ -363,17 +353,23 @@ summary_col([modelo_logistico_bin],
 X_features_trasnformada['phat'] = modelo_logistico_bin.predict()
 
 # Matriz de confusão para cutoff = 0.5
-matriz_confusao(observado=X_features_trasnformada['ENCERROU_ATIVIDADE'],
-                predicts=X_features_trasnformada['phat'], 
-                cutoff=0.5)
+# Imprimir matriz de confusão e curva roc, além dos 
+# indicadores com sensitividade, especificidade, acurácia, auc_roc, precision, recall, f1-score
+gerarMetricasModelo(observado=X_features_trasnformada['ENCERROU_ATIVIDADE'],
+                    predicts=X_features_trasnformada['phat'], 
+                    cutoff=0.5,
+                    base='Treino')
 
 # Matriz de confusão para cutoff = 0.3
-matriz_confusao(observado=X_features_trasnformada['ENCERROU_ATIVIDADE'],
-                predicts=X_features_trasnformada['phat'], 
-                cutoff=0.3)
+gerarMetricasModelo(observado=X_features_trasnformada['ENCERROU_ATIVIDADE'],
+                    predicts=X_features_trasnformada['phat'], 
+                    cutoff=0.3,
+                    base='Treino')
 
 # Matriz de confusão para cutoff = 0.7
-matriz_confusao(observado=X_features_trasnformada['ENCERROU_ATIVIDADE'],
-                predicts=X_features_trasnformada['phat'], 
-                cutoff=0.7)
+gerarMetricasModelo(observado=X_features_trasnformada['ENCERROU_ATIVIDADE'],
+                    predicts=X_features_trasnformada['phat'], 
+                    cutoff=0.7,
+                    base='Treino')
 
+X_features_trasnformada = X_features_trasnformada.drop('phat', axis=1)
