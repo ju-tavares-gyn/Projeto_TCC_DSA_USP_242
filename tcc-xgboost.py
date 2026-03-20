@@ -19,6 +19,10 @@ github: https://github.com/ju-tavares-gyn/Projeto_TCC_DSA_USP_242.git
 #!pip install python-dateutil
 #!pip install scikit-optimize
 
+#!pip install statsmodels
+#!pip install scikit-learn
+#!pip install --upgrade statstests
+
 #%% Importando os pacotes
 import pandas as pd
 import numpy as np
@@ -38,6 +42,13 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 from funcoes_ajuda import gerarIndicadores
 from funcoes_ajuda import gerarMetricasModelo
+
+import statsmodels.api as sm # estimação de modelos
+# Carregamento da função 'stepwise' do pacote 'statstests.process'
+# Autores do pacote: Luiz Paulo Fávero e Helder Prado Santos
+# https://stats-tests.github.io/statstests/
+from statstests.process import stepwise # procedimento Stepwise
+from statsmodels.iolib.summary2 import summary_col # comparação entre modelos
 
 
 #%% Carregando os banco de dados antes e pós RedeSim
@@ -305,8 +316,6 @@ feat_importances.nlargest(15).plot(kind='barh')
 plt.show()
 
 #%% Estimação com modelo logístico binário pela função 'sm.Logit.from_formula'
-import statsmodels.api as sm # estimação de modelos
-from statsmodels.iolib.summary2 import summary_col # comparação entre modelos
 
 # Aplicar One-Hot Encoding para features com poucas categorias
 X_features_trasnformada = pd.get_dummies(X_features, columns=colunas_OnHot, dtype=int, drop_first=True)
@@ -352,12 +361,7 @@ summary_col([modelo_logistico_bin],
                 'Log-lik':lambda x: "{:.3f}".format(x.llf)
         })
 
-#%% Carregamento da função 'stepwise' do pacote 'statstests.process'
-# Autores do pacote: Luiz Paulo Fávero e Helder Prado Santos
-# https://stats-tests.github.io/statstests/
-from statstests.process import stepwise # procedimento Stepwise
-
-#Estimação do modelo por meio do procedimento Stepwise
+#%% Estimação do modelo por meio do procedimento Stepwise
 step_modelo_logistico_bin = stepwise(modelo_logistico_bin, pvalue_limit=0.05)
 step_modelo_logistico_bin.summary()
 
