@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sat Nov 16 21:03:50 2024
-@author: João Mello
-
-Modificado em 12/02/2026
+Created em 12/02/2026
 @author: Juliano Tavares
 """
 
@@ -59,23 +56,24 @@ def gerarMetricasModelo(predicts, observado, cutoff=0.5, base='Treino'):
     #print(f"AUC-ROC: {auc_score:.2%}")
     
     # Visualização dos principais indicadores desta matriz de confusão
-    indicadores = pd.DataFrame({'Sensitividade':[sensitividade],
+    indicadores = pd.DataFrame({'Base':[base],
+                                'Sensitividade':[sensitividade],
                                 'Especificidade':[especificidade],
                                 'Acurácia':[acuracia],
                                 'AUC-ROC':[auc_score]})
         
     # print(f"GINI: {(2*auc_score-1):.2%}")
-    print('\n',indicadores)
+    print(indicadores)
     
     # Relatório de classificação do Scikit
-    print('\n', classification_report(observado, predicao_binaria))
+    print('\n', classification_report(observado, predicao_binaria, digits=6))
     
     # Gerar a Curva ROC
     fpr, tpr, thresholds = roc_curve(observado, predicao_binaria)
     
     # Plotar a Curva ROC
     plt.figure(figsize=(6, 4))
-    plt.plot(fpr, tpr, color='blue', label=f'Curva ROC (AUC = {auc_score:.2f})')
+    plt.plot(fpr, tpr, color='blue', label=f'Curva ROC (AUC = {auc_score:.6f})')
     plt.plot([1, 0], [1, 0], color='red', linestyle='--')  # Linha de referência (modelo aleatório)
     plt.xlabel("Taxa de Falsos Positivos (FPR)")
     plt.ylabel("Taxa de Verdadeiros Positivos (TPR)")

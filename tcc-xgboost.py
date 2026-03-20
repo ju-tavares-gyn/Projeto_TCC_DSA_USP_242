@@ -152,6 +152,9 @@ print(y_treino.shape)
 print(X_teste.shape)
 print(y_teste.shape)
 
+# verificar tipo das variáveis
+X_features_trasnformada.info()
+
 #%% Definir os parâmetros do GridSearchCV
 param_grid = {
     # n_estimators = Número de árvores (geralmente entre 100-1000).
