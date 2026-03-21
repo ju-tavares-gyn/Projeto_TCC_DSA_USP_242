@@ -52,9 +52,8 @@ def gerarMetricasModelo(predicts, observado, cutoff=0.5, base='Treino'):
     acuracia = accuracy_score(observado, predicao_binaria)
 
     # Calculando AUC
-    auc_score = roc_auc_score(observado, predicao_binaria)
-    #print(f"AUC-ROC: {auc_score:.2%}")
-    
+    auc_score = roc_auc_score(observado, predicts)
+       
     # Visualização dos principais indicadores desta matriz de confusão
     indicadores = pd.DataFrame({'Base':[base],
                                 'Sensitividade':[sensitividade],
@@ -69,7 +68,7 @@ def gerarMetricasModelo(predicts, observado, cutoff=0.5, base='Treino'):
     print('\n', classification_report(observado, predicao_binaria, digits=6))
     
     # Gerar a Curva ROC
-    fpr, tpr, thresholds = roc_curve(observado, predicao_binaria)
+    fpr, tpr, thresholds = roc_curve(observado, predicts)
     
     # Plotar a Curva ROC
     plt.figure(figsize=(6, 4))
@@ -81,6 +80,52 @@ def gerarMetricasModelo(predicts, observado, cutoff=0.5, base='Treino'):
     plt.legend(loc="lower right")
     plt.grid()
     plt.show()
+
+# Igualando critérios de especificidade e de sensitividade
+# Tentaremos estabelecer um critério que iguale a probabilidade de
+#acerto daqueles que chegarão atrasados (sensitividade) e a probabilidade de
+#acerto daqueles que não chegarão atrasados (especificidade).
+
+# ATENÇÃO: o que será feito a seguir possui fins didáticos, apenas. DE NENHUMA
+#FORMA, o procedimento garante a maximização da acurácia do modelo!
+
+# Criação da função 'espec_sens' para a construção de um dataset com diferentes
+# valores de cutoff, sensitividade e especificidade:
+
+def espec_sens(observado,predicts):
+    
+    # Adicionar objeto com os valores dos predicts
+    values = predicts.values
+    
+    # Range dos cutoffs a serem analisados em steps de 0.01
+    cutoffs = np.arange(0,1.01,0.01)
+    
+    # Listas que receberão os resultados de especificidade e sensitividade
+    lista_sensitividade = []
+    lista_especificidade = []
+    
+    for cutoff in cutoffs:
+        
+        predicao_binaria = []
+        
+        # Definindo resultado binário de acordo com o predict
+        for item in values:
+            if item >= cutoff:
+                predicao_binaria.append(1)
+            else:
+                predicao_binaria.append(0)
+                
+        # Cálculo da sensitividade e especificidade no cutoff
+        sensitividade = recall_score(observado, predicao_binaria, pos_label=1)
+        especificidadee = recall_score(observado, predicao_binaria, pos_label=0)
+        
+        # Adicionar valores nas listas
+        lista_sensitividade.append(sensitividade)
+        lista_especificidade.append(especificidadee)
+        
+    # Criar dataframe com os resultados nos seus respectivos cutoffs
+    resultado = pd.DataFrame({'cutoffs':cutoffs,'sensitividade':lista_sensitividade,'especificidade':lista_especificidade})
+    return resultado
 
 ## Faz a transformação das features categóricas usando a Estratégia Baseada na Cardinalidade:
 ## - One-Hot Encoding para cardinalidade até 10 categorias

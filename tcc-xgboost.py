@@ -42,6 +42,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 from funcoes_ajuda import gerarIndicadores
 from funcoes_ajuda import gerarMetricasModelo
+from funcoes_ajuda import espec_sens
 
 import statsmodels.api as sm # estimação de modelos
 # Carregamento da função 'stepwise' do pacote 'statstests.process'
@@ -321,18 +322,20 @@ plt.show()
 X_features_trasnformada = pd.get_dummies(X_features, columns=colunas_OnHot, dtype=int, drop_first=True)
 
 # Aplicar Frequency Encoding para alta cardinalidade
-for col in colunas_TargetEncoder:
-    freq = X_features_trasnformada[col].value_counts(normalize=True)
-    X_features_trasnformada[f'{col}_freq'] = X_features_trasnformada[col].map(freq)
-    X_features_trasnformada.drop(col, axis=1, inplace=True)
+# for col in colunas_TargetEncoder:
+#     freq = X_features_trasnformada[col].value_counts(normalize=True)
+#     X_features_trasnformada[col] = X_features_trasnformada[col].map(freq)
+#     X_features_trasnformada.drop(col, axis=1, inplace=True)
+    
+# Aplicar TargetEncoder para features com muitas categorias
+encoder_log_bin = ce.TargetEncoder(cols=colunas_TargetEncoder, smoothing=1.0)
+# X_treino[colunas_TargetEncoder] = encoder_log_bin.fit_transform(X_treino[colunas_TargetEncoder], y_treino)
+df_treino_TargetEncoder = encoder_log_bin.fit_transform(X_features[colunas_TargetEncoder], y_target)
+X_features_trasnformada[colunas_TargetEncoder] = encoder_log_bin.transform(X_features_trasnformada[colunas_TargetEncoder])
 
 # Ajustar nome das variáveis - remover espaços e substituir '_'. Substituir barra por '_'
 X_features_trasnformada.columns = X_features_trasnformada.columns.str.strip().str.replace(' ', '_')
 X_features_trasnformada.columns = X_features_trasnformada.columns.str.replace('/', '_')
-
-# Aplicar TargetEncoder para features com muitas categorias
-#encoder = ce.TargetEncoder(cols=colunas_TargetEncoder) #, smoothing=1.0)
-#X_features_trasnformada[colunas_TargetEncoder] = encoder.fit_transform(X_features_trasnformada[colunas_TargetEncoder], y_target)
 
 X_features_trasnformada = pd.concat([X_features_trasnformada, y_target], axis=1)
 
@@ -344,9 +347,9 @@ X_features_trasnformada['ENCERROU_ATIVIDADE'].value_counts().sort_index()
 # formula_modelo_lb = ' + '.join(lista_colunas_lb)
 # formula_modelo_lb = "ENCERROU_ATIVIDADE ~ " + formula_modelo_lb
 
-# ENCERROU_ATIVIDADE ~ QTDE_SOCIOS + CAPITAL_SOCIAL + TempoAtividadeEmpresarial + CADASTRO_VIA_REDESIM_S + SITUACAO_CADASTRAL_Ativo + SITUACAO_CADASTRAL_Baixado + SITUACAO_CADASTRAL_Cassado + SITUACAO_CADASTRAL_Paralisado + SITUACAO_CADASTRAL_Suspenso + ENQUADRAMENTO_EMPRESA_Microempresa + ENQUADRAMENTO_EMPRESA_Normal + ENQUADRAMENTO_EMPRESA_Simples_Nacional_SIMEI + TIPO_CONTRIBUINTE_COMERCIANTE_ATACADISTA + TIPO_CONTRIBUINTE_COMERCIANTE_VAREJISTA + TIPO_CONTRIBUINTE_EXTRATOR_MINERAL_OU_FÓSSIL + TIPO_CONTRIBUINTE_INDUSTRIAL + TIPO_CONTRIBUINTE_OUTRO_PRESTADOR_DE_SERVIÇO + TIPO_CONTRIBUINTE_PRESTADOR_DE_SERVIÇO_DE_COMUNICAÇÃO + TIPO_CONTRIBUINTE_PRODUTOR_RURAL + TIPO_CONTRIBUINTE_PRODUTOR_URBANO + TIPO_CONTRIBUINTE_TRANSPORTADOR + MUNICIPIO_freq + NATUREZA_JURIDICA_freq + ATIVIDADE_ECONOMICA_DIVISAO_freq
-formula = 'ENCERROU_ATIVIDADE ~ SITUACAO_CADASTRAL_Baixado + SITUACAO_CADASTRAL_Cassado + SITUACAO_CADASTRAL_Ativo + SITUACAO_CADASTRAL_Suspenso + ENQUADRAMENTO_EMPRESA_Microempresa + ENQUADRAMENTO_EMPRESA_Normal + ENQUADRAMENTO_EMPRESA_Simples_Nacional_SIMEI + TIPO_CONTRIBUINTE_COMERCIANTE_ATACADISTA + TIPO_CONTRIBUINTE_COMERCIANTE_VAREJISTA + TIPO_CONTRIBUINTE_EXTRATOR_MINERAL_OU_FÓSSIL + TIPO_CONTRIBUINTE_INDUSTRIAL + TIPO_CONTRIBUINTE_OUTRO_PRESTADOR_DE_SERVIÇO + TIPO_CONTRIBUINTE_PRESTADOR_DE_SERVIÇO_DE_COMUNICAÇÃO + TIPO_CONTRIBUINTE_PRODUTOR_RURAL + TIPO_CONTRIBUINTE_PRODUTOR_URBANO + TIPO_CONTRIBUINTE_TRANSPORTADOR + MUNICIPIO_freq + NATUREZA_JURIDICA_freq + ATIVIDADE_ECONOMICA_DIVISAO_freq + TempoAtividadeEmpresarial + QTDE_SOCIOS' # CADASTRO_VIA_REDESIM_S + SITUACAO_CADASTRAL_Paralisado + CAPITAL_SOCIAL 
-formula = 'ENCERROU_ATIVIDADE ~ SITUACAO_CADASTRAL_Ativo + SITUACAO_CADASTRAL_Baixado + SITUACAO_CADASTRAL_Suspenso + ENQUADRAMENTO_EMPRESA_Normal + MUNICIPIO_freq + NATUREZA_JURIDICA_freq + TempoAtividadeEmpresarial + QTDE_SOCIOS'
+# ENCERROU_ATIVIDADE ~ QTDE_SOCIOS + CAPITAL_SOCIAL + TempoAtividadeEmpresarial + CADASTRO_VIA_REDESIM_S + SITUACAO_CADASTRAL_Ativo + SITUACAO_CADASTRAL_Baixado + SITUACAO_CADASTRAL_Cassado + SITUACAO_CADASTRAL_Paralisado + SITUACAO_CADASTRAL_Suspenso + ENQUADRAMENTO_EMPRESA_Microempresa + ENQUADRAMENTO_EMPRESA_Normal + ENQUADRAMENTO_EMPRESA_Simples_Nacional_SIMEI + TIPO_CONTRIBUINTE_COMERCIANTE_ATACADISTA + TIPO_CONTRIBUINTE_COMERCIANTE_VAREJISTA + TIPO_CONTRIBUINTE_EXTRATOR_MINERAL_OU_FÓSSIL + TIPO_CONTRIBUINTE_INDUSTRIAL + TIPO_CONTRIBUINTE_OUTRO_PRESTADOR_DE_SERVIÇO + TIPO_CONTRIBUINTE_PRESTADOR_DE_SERVIÇO_DE_COMUNICAÇÃO + TIPO_CONTRIBUINTE_PRODUTOR_RURAL + TIPO_CONTRIBUINTE_PRODUTOR_URBANO + TIPO_CONTRIBUINTE_TRANSPORTADOR + MUNICIPIO + NATUREZA_JURIDICA + ATIVIDADE_ECONOMICA_DIVISAO
+formula = 'ENCERROU_ATIVIDADE ~ SITUACAO_CADASTRAL_Baixado + SITUACAO_CADASTRAL_Cassado + SITUACAO_CADASTRAL_Ativo + SITUACAO_CADASTRAL_Suspenso + ENQUADRAMENTO_EMPRESA_Microempresa + ENQUADRAMENTO_EMPRESA_Normal + ENQUADRAMENTO_EMPRESA_Simples_Nacional_SIMEI + TIPO_CONTRIBUINTE_COMERCIANTE_ATACADISTA + TIPO_CONTRIBUINTE_COMERCIANTE_VAREJISTA + TIPO_CONTRIBUINTE_EXTRATOR_MINERAL_OU_FÓSSIL + TIPO_CONTRIBUINTE_INDUSTRIAL + TIPO_CONTRIBUINTE_OUTRO_PRESTADOR_DE_SERVIÇO + TIPO_CONTRIBUINTE_PRESTADOR_DE_SERVIÇO_DE_COMUNICAÇÃO + TIPO_CONTRIBUINTE_PRODUTOR_RURAL + TIPO_CONTRIBUINTE_PRODUTOR_URBANO + TIPO_CONTRIBUINTE_TRANSPORTADOR + MUNICIPIO + NATUREZA_JURIDICA + ATIVIDADE_ECONOMICA_DIVISAO + TempoAtividadeEmpresarial + QTDE_SOCIOS' # CADASTRO_VIA_REDESIM_S + SITUACAO_CADASTRAL_Paralisado + CAPITAL_SOCIAL 
+formula = 'ENCERROU_ATIVIDADE ~ SITUACAO_CADASTRAL_Ativo + SITUACAO_CADASTRAL_Baixado + SITUACAO_CADASTRAL_Suspenso + ENQUADRAMENTO_EMPRESA_Normal + MUNICIPIO + NATUREZA_JURIDICA + TempoAtividadeEmpresarial + QTDE_SOCIOS'
 
 modelo_logistico_bin = sm.Logit.from_formula(formula, X_features_trasnformada).fit()
 
@@ -364,6 +367,14 @@ summary_col([modelo_logistico_bin],
 #%% Estimação do modelo por meio do procedimento Stepwise
 step_modelo_logistico_bin = stepwise(modelo_logistico_bin, pvalue_limit=0.05)
 step_modelo_logistico_bin.summary()
+
+summary_col([step_modelo_logistico_bin],
+            model_names=["MODELO FINAL"],
+            stars=True,
+            info_dict = {
+                'N':lambda x: "{0:d}".format(int(x.nobs)),
+                'Log-lik':lambda x: "{:.3f}".format(x.llf)
+        })
 
 #%% Adicionando os valores previstos de probabilidade na base de dados
 X_features_trasnformada['phat'] = step_modelo_logistico_bin.predict()
@@ -389,3 +400,20 @@ gerarMetricasModelo(observado=X_features_trasnformada['ENCERROU_ATIVIDADE'],
                     base='Treino')
 
 X_features_trasnformada = X_features_trasnformada.drop('phat', axis=1)
+
+#%% Plotagem de um gráfico que mostra a variação da sensitividade e da especificidade em função do cutoff
+dados_plotagem = espec_sens(observado = X_features_trasnformada['ENCERROU_ATIVIDADE'],
+                            predicts = X_features_trasnformada['phat'])
+
+plt.figure(figsize=(15,10))
+with plt.style.context('seaborn-v0_8-whitegrid'):
+    plt.plot(dados_plotagem.cutoffs,dados_plotagem.sensitividade, marker='o',
+         color='indigo', markersize=8)
+    plt.plot(dados_plotagem.cutoffs,dados_plotagem.especificidade, marker='o',
+         color='darkorange', markersize=8)
+plt.xlabel('Cuttoff', fontsize=20)
+plt.ylabel('Sensitividade / Especificidade', fontsize=20)
+plt.xticks(np.arange(0, 1.1, 0.2), fontsize=14)
+plt.yticks(np.arange(0, 1.1, 0.2), fontsize=14)
+plt.legend(['Sensitividade', 'Especificidade'], fontsize=20)
+plt.show()
