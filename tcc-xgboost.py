@@ -395,7 +395,7 @@ gerarMetricasModelo(observado=X_features_trasnformada['ENCERROU_ATIVIDADE'],
 # Matriz de confusão para cutoff = 0.3
 gerarMetricasModelo(observado=X_features_trasnformada['ENCERROU_ATIVIDADE'],
                     predicts=X_features_trasnformada['phat'], 
-                    cutoff=0.3,
+                    cutoff=0.2,
                     base='Treino')
 
 # Matriz de confusão para cutoff = 0.7
@@ -414,11 +414,12 @@ with plt.style.context('seaborn-v0_8-whitegrid'):
          color='indigo', markersize=8)
     plt.plot(dados_plotagem.cutoffs,dados_plotagem.especificidade, marker='o',
          color='darkorange', markersize=8)
-plt.xlabel('Cuttoff', fontsize=20)
-plt.ylabel('Sensitividade / Especificidade', fontsize=20)
-plt.xticks(np.arange(0, 1.1, 0.2), fontsize=14)
-plt.yticks(np.arange(0, 1.1, 0.2), fontsize=14)
-plt.legend(['Sensitividade', 'Especificidade'], fontsize=20)
+plt.title('Variação da sensitividade e da especificidade em função do cutoff', fontsize=16, fontweight= 'bold')  
+plt.xlabel('Cuttoff', fontsize=16)
+plt.ylabel('Sensitividade / Especificidade', fontsize=16)
+plt.xticks(np.arange(0, 1.1, 0.2), fontsize=12)
+plt.yticks(np.arange(0, 1.1, 0.2), fontsize=12)
+plt.legend(['Sensitividade', 'Especificidade'], fontsize=14)
 plt.show()
 
-X_features_trasnformada = X_features_trasnformada.drop('phat', axis=1)
+#X_features_trasnformada = X_features_trasnformada.drop('phat', axis=1)
