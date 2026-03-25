@@ -7,6 +7,7 @@ github: https://github.com/ju-tavares-gyn/Projeto_TCC_DSA_USP_242.git
 """
 
 #%% Instalar os pacotes necessários
+#   Executar cada linha de comando no Console (sem o #)
 
 #!pip install pandas
 #!pip install numpy
@@ -204,13 +205,12 @@ cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=randomState)
 grid_search = GridSearchCV(estimator=modelo_xgb, param_grid=param_grid, scoring='roc_auc', cv=cv, verbose=0, n_jobs=-1) #error_score='raise'
 
 # treinar o modelo XGBoost com o grid search
-# grid_search.fit(X_treino, y_treino)
 grid_search.fit(X_treino, y_treino)
 
 # finalizar o cronômetro do tempo de treinamento do modelo
 data_fim = datetime.now()
 
-#%% calculando o tempo de treinamento do modelo
+# calculando o tempo de treinamento do modelo
 tempoTreino = data_fim - data_inicio
 dias = tempoTreino.days
 horas, resto = divmod(tempoTreino.seconds, 3600)
@@ -251,20 +251,21 @@ data_inicio = datetime.now()
 
 # 1. Definição do Espaço de Busca. Fixado os melhores parâmetros estimados entre os intervalos testados
 search_spaces = {
-    'n_estimators': Integer(135, 136), # 100, 1000
+    'n_estimators': Integer(134, 135), # 100, 1000
     'max_depth': Integer(7, 8), # 3, 10
-    'learning_rate': Real(0.093, 0.094, prior='log-uniform'), # 0.01, 0.3
-    'colsample_bytree': Real(0.79, 0.795), # 0.5, 1.0
-    'subsample': Real(0.8, 0.83), # 0.5, 1.0
-    'gamma': Real(1e-6, 1.7e-05, prior='log-uniform') # 1e-6, 1.0
+    'learning_rate': Real(0.0939319326951934, 0.0939319326951935, prior='log-uniform'), # 0.01, 0.3
+    'colsample_bytree': Real(0.790840805302724, 0.790840805302725), # 0.5, 1.0
+    'subsample': Real(0.8202576462758476, 0.8202576462758477), # 0.5, 1.0
+    'gamma': Real(1.389192871467751e-05, 1.389192871467752e-05, prior='log-uniform') # 1e-6, 1.0
 }
 
-#Melhores parâmetros com otimização Bayesiana: OrderedDict({'colsample_bytree': 0.7950160418010597, 
-#                                                           'gamma': 1.723247214111904e-05, 
-#                                                           'learning_rate': 0.09429320873621094, 
+#Tempo de execução do modelo XGBoost com Otimização Bayesiana: 00h :05m :59s
+#Melhores parâmetros com otimização Bayesiana: OrderedDict({'colsample_bytree': 0.7908408053027242, 
+#                                                           'gamma': 1.3891172525641981e-05, 
+#                                                           'learning_rate': 0.09393235931377739, 
 #                                                           'max_depth': 8, 
-#                                                           'n_estimators': 136, 
-#                                                           'subsample': 0.8350202858637643})
+#                                                           'n_estimators': 135, 
+#                                                           'subsample': 0.8202576462758477})
 
 # 2. Instância do Modelo
 xgb_model = xgb.XGBClassifier(objective='binary:logistic', eval_metric='logloss', early_stopping_rounds=20) # Definido na instância para versões recentes
@@ -365,6 +366,10 @@ summary_col([modelo_logistico_bin],
         })
 
 #%% Estimação do modelo por meio do procedimento Stepwise
+formula = 'ENCERROU_ATIVIDADE ~ ENQUADRAMENTO_EMPRESA_Normal + MUNICIPIO + NATUREZA_JURIDICA + TempoAtividadeEmpresarial + QTDE_SOCIOS'
+
+modelo_logistico_bin = sm.Logit.from_formula(formula, X_features_trasnformada).fit()
+
 step_modelo_logistico_bin = stepwise(modelo_logistico_bin, pvalue_limit=0.05)
 step_modelo_logistico_bin.summary()
 
@@ -399,8 +404,6 @@ gerarMetricasModelo(observado=X_features_trasnformada['ENCERROU_ATIVIDADE'],
                     cutoff=0.7,
                     base='Treino')
 
-X_features_trasnformada = X_features_trasnformada.drop('phat', axis=1)
-
 #%% Plotagem de um gráfico que mostra a variação da sensitividade e da especificidade em função do cutoff
 dados_plotagem = espec_sens(observado = X_features_trasnformada['ENCERROU_ATIVIDADE'],
                             predicts = X_features_trasnformada['phat'])
@@ -417,3 +420,5 @@ plt.xticks(np.arange(0, 1.1, 0.2), fontsize=14)
 plt.yticks(np.arange(0, 1.1, 0.2), fontsize=14)
 plt.legend(['Sensitividade', 'Especificidade'], fontsize=20)
 plt.show()
+
+X_features_trasnformada = X_features_trasnformada.drop('phat', axis=1)

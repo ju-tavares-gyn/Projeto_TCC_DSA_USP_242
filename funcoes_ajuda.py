@@ -25,17 +25,22 @@ import matplotlib.pyplot as plt
 # from datetime import datetime
 # from dateutil.relativedelta import relativedelta
 
-def gerarMetricasModelo(predicts, observado, cutoff=0.5, base='Treino'):
+def gerarMetricasModelo(predicts, observado, cutoff=None, base='Treino'):
     
     values = predicts.values
     
     predicao_binaria = []
-        
-    for item in values:
-        if item < cutoff:
-            predicao_binaria.append(0)
-        else:
-            predicao_binaria.append(1)
+    
+    if cutoff is None:
+        predicao_binaria = predicts
+        print('parâmetro cutoff é nulo')
+    else:
+        print(f'parâmetro cutoff igual a {cutoff}')
+        for item in values:
+            if item < cutoff:
+                predicao_binaria.append(0)
+            else:
+                predicao_binaria.append(1)
            
     cm = confusion_matrix(predicao_binaria, observado)
     disp = ConfusionMatrixDisplay(confusion_matrix=cm)
