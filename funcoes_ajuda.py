@@ -18,6 +18,7 @@ from sklearn.metrics import roc_auc_score
 from sklearn.metrics import roc_curve
 from sklearn.metrics import ConfusionMatrixDisplay
 from sklearn.metrics import recall_score
+import shap as shap
     
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -131,6 +132,44 @@ def espec_sens(observado,predicts):
     # Criar dataframe com os resultados nos seus respectivos cutoffs
     resultado = pd.DataFrame({'cutoffs':cutoffs,'sensitividade':lista_sensitividade,'especificidade':lista_especificidade})
     return resultado
+
+# Gerar gráfico do algoritmo SHAP que é uma das melhores técnicas para explicar modelos de classificação com o XGBoost.
+# Será usado o algoritmo Tree SHAP, específico para árvores.
+def gerarGraficoSHAP(modelo, df_teste):
+    explainerTreeShap = shap.TreeExplainer(modelo, df_teste)
+
+    # Calcula os valores SHAP para o conjunto de teste
+    # O resultado será uma matriz com o impacto de cada feature para cada amostra.
+    shap_values = explainerTreeShap.shap_values(df_teste)
+
+    feature_names = df_teste.columns.tolist()
+
+    # Cria um objeto Explanation com os nomes
+    shap_exp = shap.Explanation(values=shap_values, 
+                                base_values=explainerTreeShap.expected_value, 
+                                data=df_teste, 
+                                feature_names=feature_names)
+
+    # Gera o gráfico de barras (bar plot) com os nomes corretos
+    shap.plots.bar(shap_exp, max_display=30, show=False)
+    
+    
+    ax = plt.gca()
+    ax.set_xlabel("Impacto no Modelo (Valor médio SHAP)", fontsize=12, fontweight='bold')
+    ax.set_ylabel("Features", fontsize=12, fontweight='bold')
+    ax.set_title("Importância das Features - SHAP", fontsize=16, pad=20)
+
+    # Define o tamanho da figura: (largura em polegadas, altura em polegadas)
+    plt.figure(figsize=(20, 15))
+    
+    # Adiciona rodapé
+    plt.figtext(0.5, -0.05, "Valores positivos aumentam a previsão da classe positiva", 
+                ha="center", fontsize=9, style='italic')
+    
+    plt.tight_layout()
+        
+    # Exibe o gráfico
+    plt.show()    
 
 ## Faz a transformação das features categóricas usando a Estratégia Baseada na Cardinalidade:
 ## - One-Hot Encoding para cardinalidade até 10 categorias

@@ -27,14 +27,13 @@ github: https://github.com/ju-tavares-gyn/Projeto_TCC_DSA_USP_242.git
 #%% Importando os pacotes
 import pandas as pd
 import numpy as np
+
 import xgboost as xgb
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import StratifiedKFold
-
 from skopt import BayesSearchCV
 from skopt.space import Real, Integer
-
 import category_encoders as ce
 
 # from scipy.stats import zscore
@@ -44,6 +43,7 @@ from datetime import datetime
 from funcoes_ajuda import gerarIndicadores
 from funcoes_ajuda import gerarMetricasModelo
 from funcoes_ajuda import espec_sens
+from funcoes_ajuda import gerarGraficoSHAP
 
 import statsmodels.api as sm # estimação de modelos
 # Carregamento da função 'stepwise' do pacote 'statstests.process'
@@ -202,10 +202,10 @@ modelo_xgb = xgb.XGBClassifier(objective='binary:logistic', random_state=randomS
 
 cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=randomState)
 
-grid_search = GridSearchCV(estimator=modelo_xgb, param_grid=param_grid, scoring='roc_auc', cv=cv, verbose=0, n_jobs=-1) #error_score='raise'
+modelo_grid_search = GridSearchCV(estimator=modelo_xgb, param_grid=param_grid, scoring='roc_auc', cv=cv, verbose=0, n_jobs=-1) #error_score='raise'
 
 # treinar o modelo XGBoost com o grid search
-grid_search.fit(X_treino, y_treino)
+modelo_grid_search.fit(X_treino, y_treino)
 
 # finalizar o cronômetro do tempo de treinamento do modelo
 data_fim = datetime.now()
@@ -220,11 +220,11 @@ print(f"Tempo de execução do modelo XGBoost com GridSearch: {dias * 24 + horas
 
 #%% Verificando os melhores parâmetros do modelo
 print("Melhores parâmetros com GridSearch:")
-print(grid_search.best_params_)
+print(modelo_grid_search.best_params_)
 
 #%% Avaliar o modelo XGBoosting com GridSearch
-X_treino['phat']  = grid_search.best_estimator_.predict(X_treino)
-X_teste['phat']  = grid_search.best_estimator_.predict(X_teste)
+X_treino['phat']  = modelo_grid_search.best_estimator_.predict(X_treino)
+X_teste['phat']  = modelo_grid_search.best_estimator_.predict(X_teste)
 
 # Imprimir matriz de confusão e curva roc, além dos 
 # indicadores com sensitividade, especificidade, acurácia, auc_roc, precision, recall, f1-score
@@ -236,12 +236,14 @@ X_teste = X_teste.drop('phat', axis=1)
 
 #%% Imprimir a importância das variáveis após o treinamento do modelo
 # model.feature_importances_ retorna um array com as importâncias
-feat_importances = pd.Series(grid_search.best_estimator_.feature_importances_, index=X_treino.columns)
+feat_importances = pd.Series(modelo_grid_search.best_estimator_.feature_importances_, index=X_treino.columns)
 feat_importances.nlargest(10).plot(kind='barh')
 plt.show()
 
-#%% Treinar o modelo XGBoost com o Otimização Bayesiana
+#%% Imprimir a importância das features conforme o algoritmo SHAP
+gerarGraficoSHAP(modelo_grid_search.best_estimator_, X_teste)
 
+#%% Treinar o modelo XGBoost com o Otimização Bayesiana
 # Divisão dos dados (Treino + Validação para o Early Stopping)
 # Dos 80% restantes, separa uma fatia para VALIDAÇÃO (ex: 20% do que sobrou)
 X_train, X_val, y_train, y_val = train_test_split(X_treino, y_treino, test_size=0.2, random_state=randomState)
@@ -317,6 +319,9 @@ feat_importances.nlargest(15).plot(kind='barh')
 # feat_importances.plot(kind='barh')
 plt.show()
 
+#%% Imprimir a importância das features conforme o algoritmo SHAP
+gerarGraficoSHAP(opt.best_estimator_, X_teste)
+
 #%% Estimação com modelo logístico binário pela função 'sm.Logit.from_formula'
 
 # Aplicar One-Hot Encoding para features com poucas categorias
@@ -350,7 +355,7 @@ X_features_trasnformada['ENCERROU_ATIVIDADE'].value_counts().sort_index()
 
 # ENCERROU_ATIVIDADE ~ QTDE_SOCIOS + CAPITAL_SOCIAL + TempoAtividadeEmpresarial + CADASTRO_VIA_REDESIM_S + SITUACAO_CADASTRAL_Ativo + SITUACAO_CADASTRAL_Baixado + SITUACAO_CADASTRAL_Cassado + SITUACAO_CADASTRAL_Paralisado + SITUACAO_CADASTRAL_Suspenso + ENQUADRAMENTO_EMPRESA_Microempresa + ENQUADRAMENTO_EMPRESA_Normal + ENQUADRAMENTO_EMPRESA_Simples_Nacional_SIMEI + TIPO_CONTRIBUINTE_COMERCIANTE_ATACADISTA + TIPO_CONTRIBUINTE_COMERCIANTE_VAREJISTA + TIPO_CONTRIBUINTE_EXTRATOR_MINERAL_OU_FÓSSIL + TIPO_CONTRIBUINTE_INDUSTRIAL + TIPO_CONTRIBUINTE_OUTRO_PRESTADOR_DE_SERVIÇO + TIPO_CONTRIBUINTE_PRESTADOR_DE_SERVIÇO_DE_COMUNICAÇÃO + TIPO_CONTRIBUINTE_PRODUTOR_RURAL + TIPO_CONTRIBUINTE_PRODUTOR_URBANO + TIPO_CONTRIBUINTE_TRANSPORTADOR + MUNICIPIO + NATUREZA_JURIDICA + ATIVIDADE_ECONOMICA_DIVISAO
 formula = 'ENCERROU_ATIVIDADE ~ SITUACAO_CADASTRAL_Baixado + SITUACAO_CADASTRAL_Cassado + SITUACAO_CADASTRAL_Ativo + SITUACAO_CADASTRAL_Suspenso + ENQUADRAMENTO_EMPRESA_Microempresa + ENQUADRAMENTO_EMPRESA_Normal + ENQUADRAMENTO_EMPRESA_Simples_Nacional_SIMEI + TIPO_CONTRIBUINTE_COMERCIANTE_ATACADISTA + TIPO_CONTRIBUINTE_COMERCIANTE_VAREJISTA + TIPO_CONTRIBUINTE_EXTRATOR_MINERAL_OU_FÓSSIL + TIPO_CONTRIBUINTE_INDUSTRIAL + TIPO_CONTRIBUINTE_OUTRO_PRESTADOR_DE_SERVIÇO + TIPO_CONTRIBUINTE_PRESTADOR_DE_SERVIÇO_DE_COMUNICAÇÃO + TIPO_CONTRIBUINTE_PRODUTOR_RURAL + TIPO_CONTRIBUINTE_PRODUTOR_URBANO + TIPO_CONTRIBUINTE_TRANSPORTADOR + MUNICIPIO + NATUREZA_JURIDICA + ATIVIDADE_ECONOMICA_DIVISAO + TempoAtividadeEmpresarial + QTDE_SOCIOS' # CADASTRO_VIA_REDESIM_S + SITUACAO_CADASTRAL_Paralisado + CAPITAL_SOCIAL 
-formula = 'ENCERROU_ATIVIDADE ~ SITUACAO_CADASTRAL_Ativo + SITUACAO_CADASTRAL_Baixado + SITUACAO_CADASTRAL_Suspenso + ENQUADRAMENTO_EMPRESA_Normal + MUNICIPIO + NATUREZA_JURIDICA + TempoAtividadeEmpresarial + QTDE_SOCIOS'
+formula = 'ENCERROU_ATIVIDADE ~ SITUACAO_CADASTRAL_Baixado + SITUACAO_CADASTRAL_Suspenso + ENQUADRAMENTO_EMPRESA_Normal + MUNICIPIO + NATUREZA_JURIDICA + TempoAtividadeEmpresarial + QTDE_SOCIOS'
 
 modelo_logistico_bin = sm.Logit.from_formula(formula, X_features_trasnformada).fit()
 
@@ -367,6 +372,7 @@ summary_col([modelo_logistico_bin],
 
 #%% Estimação do modelo por meio do procedimento Stepwise
 formula = 'ENCERROU_ATIVIDADE ~ ENQUADRAMENTO_EMPRESA_Normal + MUNICIPIO + NATUREZA_JURIDICA + TempoAtividadeEmpresarial + QTDE_SOCIOS'
+formula = 'ENCERROU_ATIVIDADE ~ SITUACAO_CADASTRAL_Baixado + SITUACAO_CADASTRAL_Suspenso + ENQUADRAMENTO_EMPRESA_Normal + MUNICIPIO + NATUREZA_JURIDICA + TempoAtividadeEmpresarial + QTDE_SOCIOS'
 
 modelo_logistico_bin = sm.Logit.from_formula(formula, X_features_trasnformada).fit()
 
