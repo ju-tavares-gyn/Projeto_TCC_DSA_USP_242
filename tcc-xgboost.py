@@ -327,12 +327,6 @@ gerarGraficoSHAP(opt.best_estimator_, X_teste)
 # Aplicar One-Hot Encoding para features com poucas categorias
 X_features_trasnformada = pd.get_dummies(X_features, columns=colunas_OnHot, dtype=int, drop_first=True)
 
-# Aplicar Frequency Encoding para alta cardinalidade
-# for col in colunas_TargetEncoder:
-#     freq = X_features_trasnformada[col].value_counts(normalize=True)
-#     X_features_trasnformada[col] = X_features_trasnformada[col].map(freq)
-#     X_features_trasnformada.drop(col, axis=1, inplace=True)
-    
 # Aplicar TargetEncoder para features com muitas categorias
 encoder_log_bin = ce.TargetEncoder(cols=colunas_TargetEncoder, smoothing=1.0)
 # X_treino[colunas_TargetEncoder] = encoder_log_bin.fit_transform(X_treino[colunas_TargetEncoder], y_treino)
@@ -354,6 +348,7 @@ X_features_trasnformada['ENCERROU_ATIVIDADE'].value_counts().sort_index()
 # formula_modelo_lb = "ENCERROU_ATIVIDADE ~ " + formula_modelo_lb
 
 # ENCERROU_ATIVIDADE ~ QTDE_SOCIOS + CAPITAL_SOCIAL + TempoAtividadeEmpresarial + CADASTRO_VIA_REDESIM_S + SITUACAO_CADASTRAL_Ativo + SITUACAO_CADASTRAL_Baixado + SITUACAO_CADASTRAL_Cassado + SITUACAO_CADASTRAL_Paralisado + SITUACAO_CADASTRAL_Suspenso + ENQUADRAMENTO_EMPRESA_Microempresa + ENQUADRAMENTO_EMPRESA_Normal + ENQUADRAMENTO_EMPRESA_Simples_Nacional_SIMEI + TIPO_CONTRIBUINTE_COMERCIANTE_ATACADISTA + TIPO_CONTRIBUINTE_COMERCIANTE_VAREJISTA + TIPO_CONTRIBUINTE_EXTRATOR_MINERAL_OU_FÓSSIL + TIPO_CONTRIBUINTE_INDUSTRIAL + TIPO_CONTRIBUINTE_OUTRO_PRESTADOR_DE_SERVIÇO + TIPO_CONTRIBUINTE_PRESTADOR_DE_SERVIÇO_DE_COMUNICAÇÃO + TIPO_CONTRIBUINTE_PRODUTOR_RURAL + TIPO_CONTRIBUINTE_PRODUTOR_URBANO + TIPO_CONTRIBUINTE_TRANSPORTADOR + MUNICIPIO + NATUREZA_JURIDICA + ATIVIDADE_ECONOMICA_DIVISAO
+formula = 'ENCERROU_ATIVIDADE ~ QTDE_SOCIOS + CAPITAL_SOCIAL + TempoAtividadeEmpresarial + CADASTRO_VIA_REDESIM_S + SITUACAO_CADASTRAL_Ativo + SITUACAO_CADASTRAL_Baixado + SITUACAO_CADASTRAL_Cassado + SITUACAO_CADASTRAL_Paralisado + SITUACAO_CADASTRAL_Suspenso + ENQUADRAMENTO_EMPRESA_Microempresa + ENQUADRAMENTO_EMPRESA_Normal + ENQUADRAMENTO_EMPRESA_Simples_Nacional_SIMEI + TIPO_CONTRIBUINTE_COMERCIANTE_ATACADISTA + TIPO_CONTRIBUINTE_COMERCIANTE_VAREJISTA + TIPO_CONTRIBUINTE_EXTRATOR_MINERAL_OU_FÓSSIL + TIPO_CONTRIBUINTE_INDUSTRIAL + TIPO_CONTRIBUINTE_OUTRO_PRESTADOR_DE_SERVIÇO + TIPO_CONTRIBUINTE_PRESTADOR_DE_SERVIÇO_DE_COMUNICAÇÃO + TIPO_CONTRIBUINTE_PRODUTOR_RURAL + TIPO_CONTRIBUINTE_PRODUTOR_URBANO + TIPO_CONTRIBUINTE_TRANSPORTADOR + MUNICIPIO + NATUREZA_JURIDICA + ATIVIDADE_ECONOMICA_DIVISAO'
 formula = 'ENCERROU_ATIVIDADE ~ SITUACAO_CADASTRAL_Baixado + SITUACAO_CADASTRAL_Cassado + SITUACAO_CADASTRAL_Ativo + SITUACAO_CADASTRAL_Suspenso + ENQUADRAMENTO_EMPRESA_Microempresa + ENQUADRAMENTO_EMPRESA_Normal + ENQUADRAMENTO_EMPRESA_Simples_Nacional_SIMEI + TIPO_CONTRIBUINTE_COMERCIANTE_ATACADISTA + TIPO_CONTRIBUINTE_COMERCIANTE_VAREJISTA + TIPO_CONTRIBUINTE_EXTRATOR_MINERAL_OU_FÓSSIL + TIPO_CONTRIBUINTE_INDUSTRIAL + TIPO_CONTRIBUINTE_OUTRO_PRESTADOR_DE_SERVIÇO + TIPO_CONTRIBUINTE_PRESTADOR_DE_SERVIÇO_DE_COMUNICAÇÃO + TIPO_CONTRIBUINTE_PRODUTOR_RURAL + TIPO_CONTRIBUINTE_PRODUTOR_URBANO + TIPO_CONTRIBUINTE_TRANSPORTADOR + MUNICIPIO + NATUREZA_JURIDICA + ATIVIDADE_ECONOMICA_DIVISAO + TempoAtividadeEmpresarial + QTDE_SOCIOS' # CADASTRO_VIA_REDESIM_S + SITUACAO_CADASTRAL_Paralisado + CAPITAL_SOCIAL 
 formula = 'ENCERROU_ATIVIDADE ~ SITUACAO_CADASTRAL_Baixado + SITUACAO_CADASTRAL_Suspenso + ENQUADRAMENTO_EMPRESA_Normal + MUNICIPIO + NATUREZA_JURIDICA + TempoAtividadeEmpresarial + QTDE_SOCIOS'
 
@@ -371,10 +366,10 @@ summary_col([modelo_logistico_bin],
         })
 
 #%% Estimação do modelo por meio do procedimento Stepwise
-formula = 'ENCERROU_ATIVIDADE ~ ENQUADRAMENTO_EMPRESA_Normal + MUNICIPIO + NATUREZA_JURIDICA + TempoAtividadeEmpresarial + QTDE_SOCIOS'
-formula = 'ENCERROU_ATIVIDADE ~ SITUACAO_CADASTRAL_Baixado + SITUACAO_CADASTRAL_Suspenso + ENQUADRAMENTO_EMPRESA_Normal + MUNICIPIO + NATUREZA_JURIDICA + TempoAtividadeEmpresarial + QTDE_SOCIOS'
+# formula = 'ENCERROU_ATIVIDADE ~ ENQUADRAMENTO_EMPRESA_Normal + MUNICIPIO + NATUREZA_JURIDICA + TempoAtividadeEmpresarial + QTDE_SOCIOS'
+# formula = 'ENCERROU_ATIVIDADE ~ SITUACAO_CADASTRAL_Baixado + SITUACAO_CADASTRAL_Suspenso + ENQUADRAMENTO_EMPRESA_Normal + MUNICIPIO + NATUREZA_JURIDICA + TempoAtividadeEmpresarial + QTDE_SOCIOS'
 
-modelo_logistico_bin = sm.Logit.from_formula(formula, X_features_trasnformada).fit()
+# modelo_logistico_bin = sm.Logit.from_formula(formula, X_features_trasnformada).fit()
 
 step_modelo_logistico_bin = stepwise(modelo_logistico_bin, pvalue_limit=0.05)
 step_modelo_logistico_bin.summary()
