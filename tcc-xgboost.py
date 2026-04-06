@@ -23,6 +23,7 @@ github: https://github.com/ju-tavares-gyn/Projeto_TCC_DSA_USP_242.git
 #!pip install statsmodels
 #!pip install scikit-learn
 #!pip install --upgrade statstests
+#!pip install shap
 
 #%% Importando os pacotes
 import pandas as pd
@@ -149,6 +150,10 @@ X_features_trasnformada = X_features.copy()
 
 # One-Hot Encoding para features com poucas categorias
 X_features_trasnformada = pd.get_dummies(X_features, columns=colunas_OnHot, dtype=int, drop_first=True)
+
+# Ajustar nome das variáveis - remover espaços e substituir / por '_'.
+X_features_trasnformada.columns = X_features_trasnformada.columns.str.strip().str.replace(' ', '_')
+X_features_trasnformada.columns = X_features_trasnformada.columns.str.replace('/', '_')
 
 # Dividir a base em 80% para treino e 20% para teste / Separa 20% para o teste final (que o modelo nunca verá no treino nem na validação)
 X_treino, X_teste, y_treino, y_teste = train_test_split(X_features_trasnformada, y_target, test_size=0.2, random_state=randomState)
