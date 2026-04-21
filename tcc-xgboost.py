@@ -398,7 +398,7 @@ gerarMetricasModelo(observado=X_features_trasnformada['ENCERROU_ATIVIDADE'],
 # Matriz de confusão para cutoff = 0.3
 gerarMetricasModelo(observado=X_features_trasnformada['ENCERROU_ATIVIDADE'],
                     predicts=X_features_trasnformada['phat'], 
-                    cutoff=0.2,
+                    cutoff=0.3,
                     base='Treino')
 
 # Matriz de confusão para cutoff = 0.7
