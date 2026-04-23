@@ -80,13 +80,19 @@ def gerarIndicadores(df):
         ax.bar_label(container, padding=2)
     
     # 4. Ajustes finais
-    plt.title('Quantitativo de abertura de empresas') # N = Antes RedeSim, S = Após RedeSim
-    plt.xlabel('Ano')
-    plt.ylabel('Quantidade')
+    # plt.title('Quantitativo de abertura de empresas') # N = Antes RedeSim, S = Após RedeSim
+    # plt.xlabel('Ano')
+    # plt.ylabel('Quantidade')
+    plt.xlabel('')
+    plt.ylabel('')
     plt.legend(title='Categorias', bbox_to_anchor=(1, 1))
     
     # Definir manualmente os nomes na legenda
     ax.legend(['Antes RedeSim', 'Após RedeSim'], title='Categorias')
+    
+    # Remove as bordas superior e direita
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
     
     plt.xticks(rotation=0)
     plt.tight_layout()
@@ -108,15 +114,21 @@ def gerarIndicadores(df):
     # Visualização com Seaborn
     plt.figure(figsize=(15, 7))
     ax = sns.lineplot(data=df_top5_por_ano, x='DataHomologacaoAno', y='quantidade', hue='MUNICIPIO', marker='o', linewidth=1.0)  # Esquema de cores elegante
-    plt.title('Quantitativo de Abertura de Empresas por Município e Ano', fontsize=12, fontweight= 'bold')
+    # plt.title('Quantitativo de abertura de empresas por município e ano', fontsize=12, fontweight= 'bold')
     plt.xlabel('', fontsize=12)
     plt.ylabel('', fontsize=12)
-    plt.grid(True, linestyle='--')
+    # plt.grid(True, linestyle='--')
+
+    # Remove as bordas superior e direita
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+
     # Captura os handles (linhas) e labels (nomes) gerados
     # ax = sns.barplot(data=df_top5_por_ano, x='DataHomologacaoAno', y='quantidade', hue='MUNICIPIO')
     # handles, labels = ax.get_legend_handles_labels()
     # plt.legend(handles[0:top_municipio_qtde], labels[0:top_municipio_qtde], title='Município', bbox_to_anchor=(1.05, 1), loc='upper left')
-    plt.legend(title='Município', bbox_to_anchor=(1.05, 1), loc='upper left')
+    # plt.legend(title='Município', bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.legend(title='Município', loc='best')
     plt.tight_layout()
     plt.show()
     
