@@ -155,7 +155,7 @@ def gerarMetricasModelo(predicts, observado, cutoff=None, base='Treino'):
     cm = confusion_matrix(predicao_binaria, observado)
     disp = ConfusionMatrixDisplay(confusion_matrix=cm)
     disp.plot(values_format='d')# Formatar como inteiro os valores da matriz de confusão
-    plt.title('Matriz de Confusão - Base de ' + base)    
+    # plt.title('Matriz de Confusão - Base de ' + base)    
     plt.xlabel('Observado(Real)')
     plt.ylabel('Classificado')
     plt.gca().invert_xaxis()
@@ -256,9 +256,12 @@ def gerarGraficoSHAP(modelo, df_teste):
     
     
     ax = plt.gca()
-    ax.set_xlabel("Impacto no Modelo (Valor médio SHAP)", fontsize=12, fontweight='bold')
-    ax.set_ylabel("Features", fontsize=12, fontweight='bold')
-    ax.set_title("Importância das Features - SHAP", fontsize=16, pad=20)
+    ax.set_xlabel("Valor médio SHAP", fontsize=12, fontname="Arial")
+    ax.set_title("", fontsize=12,  fontname="Arial")
+    # ax.set_xlabel("Impacto no Modelo (Valor médio SHAP)", fontsize=12, fontweight='bold')
+    # ax.set_ylabel("Features", fontsize=12, fontweight='bold')    
+    # ax.set_title("Importância das Features - SHAP", fontsize=16, pad=20)
+    # ax.set_title("", fontsize=12, pad=20)
 
     # Define o tamanho da figura: (largura em polegadas, altura em polegadas)
     plt.figure(figsize=(20, 15))
