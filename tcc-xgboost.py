@@ -376,6 +376,8 @@ summary_col([modelo_logistico_bin],
 
 step_modelo_logistico_bin = stepwise(modelo_logistico_bin, pvalue_limit=0.05)
 
+step_modelo_logistico_bin.summary()
+
 summary_col([step_modelo_logistico_bin],
             model_names=["MODELO FINAL"],
             stars=True,
