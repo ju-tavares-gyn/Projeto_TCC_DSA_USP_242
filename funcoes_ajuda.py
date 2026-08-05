@@ -49,6 +49,11 @@ def gerarIndicadores(df):
     print(f'Tempo médio de abertura de empresa/contribuinte antes da RedeSim = {tempo1Formatado}')
     print(f'Tempo médio de abertura de empresa/contribuinte após a RedeSim   = {tempo2Formatado}')
     
+    metricaAberturaAntesRedeSim = df.loc[df['CADASTRO_VIA_REDESIM'] == 'N', 'tempo_abertura']
+    metricaAberturaRedeSim = df.loc[df['CADASTRO_VIA_REDESIM'] == 'S', 'tempo_abertura']
+    print(f'Métricas abertura de empresa/contribuinte antes RedeSim: = {metricaAberturaAntesRedeSim.describe()}')
+    print(f'Métricas abertura de empresa/contribuinte pós RedeSim: = {metricaAberturaRedeSim.describe()}')
+    
     
     ## Calcular o Tempo Médio de Sobrevivência da Empresa/Contribuintes, antes e depois da RedeSim.
     df['tempo_sobrevivencia_meses'] = np.where(df['DATA_ENCERRAMENTO_ATIVIDADE'].notna(), 

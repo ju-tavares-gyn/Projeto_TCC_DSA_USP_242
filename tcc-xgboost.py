@@ -135,6 +135,8 @@ dados_final.info()
 
 # semente que serve para reproduzir o modelo no futuro e obter os mesmos resultados(242 = turma USP/Esalq) 
 randomState=242
+# randomState=112360873 # número do telefone do Bozo SBT
+# randomState=123456 # número aleatorio
 
 # Obter 10% (0.1) das linhas aleatoriamente
 #df_fracao = dados_final.sample(frac=1)
