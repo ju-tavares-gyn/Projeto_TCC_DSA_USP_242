@@ -119,11 +119,13 @@ dados_final[coluna_target] = np.where(dados_final['SITUACAO_CADASTRAL'] == 'Baix
 dados_final.drop(columns=['DATA_SOLICITACAO_REGISTRO', 'DATA_HOMOLOGACAO_REGISTRO'], inplace=True)
 dados_final.drop(columns=['DATA_INICIO_ATIVIDADE', 'DATA_ENCERRAMENTO_ATIVIDADE'], inplace=True)
 
+# dados_final.drop(columns=['SITUACAO_CADASTRAL'], inplace=True)
+
 #%% Realizar a transformação de variáveis categóricas
 
 # variáveis categóricas nominais
 colunas_categoricas = ['CADASTRO_VIA_REDESIM', 'SITUACAO_CADASTRAL', 'ENQUADRAMENTO_EMPRESA', 'TIPO_CONTRIBUINTE', 'MUNICIPIO', 'NATUREZA_JURIDICA', 'ATIVIDADE_ECONOMICA_DIVISAO']
-
+# colunas_categoricas = ['CADASTRO_VIA_REDESIM', 'ENQUADRAMENTO_EMPRESA', 'TIPO_CONTRIBUINTE', 'MUNICIPIO', 'NATUREZA_JURIDICA', 'ATIVIDADE_ECONOMICA_DIVISAO']
 # Converter as variáveis categóricas para tipo category
 for col in colunas_categoricas:
     dados_final[col] = dados_final[col].astype('category')
@@ -146,6 +148,7 @@ y_target = dados_final['ENCERROU_ATIVIDADE']
 
 # Aplicar estratégia mista de transformação de variáveis categóricas
 colunas_OnHot = ['CADASTRO_VIA_REDESIM', 'SITUACAO_CADASTRAL', 'ENQUADRAMENTO_EMPRESA', 'TIPO_CONTRIBUINTE']
+# colunas_OnHot = ['CADASTRO_VIA_REDESIM', 'ENQUADRAMENTO_EMPRESA', 'TIPO_CONTRIBUINTE']
 colunas_TargetEncoder = ['MUNICIPIO', 'NATUREZA_JURIDICA', 'ATIVIDADE_ECONOMICA_DIVISAO']
 
 X_features_trasnformada = X_features.copy()
@@ -223,6 +226,7 @@ dias = tempoTreino.days
 horas, resto = divmod(tempoTreino.seconds, 3600)
 minutos, segundos = divmod(resto, 60)
 
+#%% Imprimir Tempo de execução do modelo XGBoost com GridSearch
 print(f"Tempo de execução do modelo XGBoost com GridSearch: {dias * 24 + horas:02}h :{minutos:02}m :{segundos:02}s")
 
 #%% Verificando os melhores parâmetros do modelo
