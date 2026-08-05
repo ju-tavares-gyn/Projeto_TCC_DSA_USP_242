@@ -242,10 +242,10 @@ X_treino = X_treino.drop('phat', axis=1)
 X_teste = X_teste.drop('phat', axis=1)
 
 #%% Imprimir a importância das variáveis após o treinamento do modelo
-# model.feature_importances_ retorna um array com as importâncias
-feat_importances = pd.Series(modelo_grid_search.best_estimator_.feature_importances_, index=X_treino.columns)
-feat_importances.nlargest(10).plot(kind='barh')
-plt.show()
+# feature_importances_ retorna um array com as importâncias
+# feat_importances = pd.Series(modelo_grid_search.best_estimator_.feature_importances_, index=X_treino.columns)
+# feat_importances.nlargest(10).plot(kind='barh')
+# plt.show()
 
 #%% Imprimir a importância das features conforme o algoritmo SHAP
 gerarGraficoSHAP(modelo_grid_search.best_estimator_, X_teste)
@@ -320,11 +320,11 @@ X_teste = X_teste.drop('phat', axis=1)
 
 #%% Imprimir a importância das variáveis após o treinamento do modelo XGBoost com Otimização Bayesiana
 
-# model.feature_importances_ retorna um array com as importâncias
-feat_importances = pd.Series(opt.best_estimator_.feature_importances_, index=X_train.columns)
-feat_importances.nlargest(15).plot(kind='barh')
+# feature_importances_ retorna um array com as importâncias
+# feat_importances = pd.Series(opt.best_estimator_.feature_importances_, index=X_train.columns)
+# feat_importances.nlargest(15).plot(kind='barh')
 # feat_importances.plot(kind='barh')
-plt.show()
+# plt.show()
 
 #%% Imprimir a importância das features conforme o algoritmo SHAP
 gerarGraficoSHAP(opt.best_estimator_, X_teste)
